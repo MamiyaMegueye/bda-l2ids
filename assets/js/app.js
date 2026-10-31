@@ -330,7 +330,7 @@
         return `<section class="ch-card ${soon ? "soon" : ""}" style="--c:${hue(c)}">
           <div class="ch-top"><span class="ch-num">${c.num}</span>
             <div class="ch-info"><h3>${c.titre}${soon ? ' <em class="badge">Bientôt</em>' : ""}</h3><p>${c.resume}</p>
-            ${soon ? "" : `<div class="chips-meta"><span>${tt.length} parties</span>${tt.length > ps.length ? `<span class="open-chip">${ps.length} disponibles</span>` : ""}${c.pdf ? `<a href="${c.pdf}" target="_blank" rel="noopener">${ico("pdf")} Notes PDF</a>` : ""}${c.td && !c.tdVerrou ? `<a href="${c.td}" target="_blank" rel="noopener">${ico("td")} ${c.tdLabel || "TD"}</a>` : c.tdVerrou ? `<span class="lock-chip" title="Disponible à la prochaine séance">${ico("lock")} ${c.tdLabel || "TD"} · prochaine séance</span>` : ""}</div>`}</div>
+            ${soon ? "" : `<div class="chips-meta"><span>${tt.length} parties</span>${tt.length > ps.length ? `<span class="open-chip">${ps.length} disponibles</span>` : ""}${c.pdf ? `<a href="${c.pdf}" download>${ico("pdf")} Télécharger le PDF</a>` : ""}${c.td && !c.tdVerrou ? `<a href="${c.td}" target="_blank" rel="noopener">${ico("td")} ${c.tdLabel || "TD"}</a>` : c.tdVerrou ? `<span class="lock-chip" title="Disponible à la prochaine séance">${ico("lock")} ${c.tdLabel || "TD"} · prochaine séance</span>` : ""}</div>`}</div>
             ${soon ? "" : `<div class="ch-prog"><b>${dn}/${ps.length}</b><span class="pbar"><i style="width:${100 * dn / ps.length}%"></i></span></div>`}
           </div>
           ${soon ? "" : `<ol class="timeline">${tt.map((p, k) => p.verrou ? `<li class="locked"><span class="tl-row"><span class="tl-dot">${ico("lock")}</span><span class="tl-t">${p.titre}</span><span class="tl-d">Prochainement</span></span></li>` : `<li class="${done[keyOf(c, p)] ? "done" : ""}"><a href="#${keyOf(c, p)}"><span class="tl-dot">${done[keyOf(c, p)] ? ico("check") : k + 1}</span><span class="tl-t">${p.titre}</span></a></li>`).join("")}</ol>`}
@@ -359,7 +359,7 @@
         <div class="tools">
           <span class="reading">${n} diapositives</span>
           <button class="btn primary" type="button" data-act="present">${ico("play")} Présenter</button>
-          ${c.pdf ? `<a class="btn" href="${c.pdf}" target="_blank" rel="noopener">${ico("pdf")} Notes PDF</a>` : ""}
+          ${c.pdf ? `<a class="btn" href="${c.pdf}" download>${ico("pdf")} Télécharger le PDF</a>` : ""}
           ${c.td && !c.tdVerrou ? `<a class="btn" href="${c.td}" target="_blank" rel="noopener">${ico("td")} ${c.tdLabel || "TD"}</a>` : c.tdVerrou ? `<span class="btn is-locked" title="Disponible à la prochaine séance">${ico("lock")} ${c.tdLabel || "TD"} · prochaine séance</span>` : ""}
         </div>
       </header>

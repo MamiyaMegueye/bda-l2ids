@@ -13,6 +13,7 @@ window.COURSE = {
    "resume": "Pourquoi le relationnel ne suffit plus toujours, les modèles ACID et BASE, le théorème de CAP et les quatre familles de bases NoSQL.",
    "duree": "90 min",
    "statut": "ok",
+   "pdf": "docs/CM1_Origines_NoSQL_parties_1-4.pdf",
    "tdLabel": "TP SQL",
    "tdVerrou": true,
    "parties": [
