@@ -1,0 +1,763 @@
+<!DOCTYPE html>
+<html lang="fr">
+<head>
+<script>window.EMBED="base";</script>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Simulations ACID et BASE</title>
+<style>
+  :root{
+    --vert:#0E5C1B; --vert-2:#1E7A30; --vert-clair:#5E8F4E; --vert-pale:#EAF1E6;
+    --orange:#D9661F; --orange-pale:#FBEBDD; --rouge:#B23A1E;
+    --gris:#F2F2F2; --gris-2:#E3E6E4; --texte:#1D2A22; --texte-2:#4A5A50;
+    --blanc:#FFFFFF; --code-bg:#0F2417; --code-txt:#E8F2EA;
+    --serif:"Palatino Linotype","Book Antiqua",Palatino,"TeX Gyre Pagella",Georgia,serif;
+    --sans:"Segoe UI",system-ui,-apple-system,Roboto,"Helvetica Neue",Arial,sans-serif;
+    --mono:"Cascadia Code","Cascadia Mono",Consolas,"SFMono-Regular",Menlo,monospace;
+  }
+  *{box-sizing:border-box;margin:0;padding:0}
+  html,body{height:100%;background:#1B2A20;overflow:hidden;font-family:var(--sans);color:var(--texte)}
+  /* Scène 16:9 de 1600x900, mise à l'échelle de la fenêtre */
+  .stage{position:absolute;left:50%;top:50%;width:1600px;height:900px;transform-origin:center center;
+    background:var(--blanc);display:grid;grid-template-rows:118px 1fr 92px;overflow:hidden;
+    box-shadow:0 20px 60px rgba(0,0,0,.35)}
+
+  /* ---------- En-tête ---------- */
+  header{background:var(--vert);color:#fff;display:flex;align-items:center;justify-content:space-between;padding:0 48px;position:relative}
+  header h1{font-family:var(--serif);font-weight:400;font-size:40px;letter-spacing:.2px}
+  header .sous{font-size:17px;opacity:.82;margin-top:4px}
+  .progress{display:flex;align-items:center;gap:0}
+  .pstep{display:flex;flex-direction:column;align-items:center;width:120px;position:relative;cursor:pointer}
+  .pstep .dot{width:38px;height:38px;border-radius:50%;border:2px solid rgba(255,255,255,.55);display:grid;place-items:center;
+    font-weight:700;font-size:17px;color:rgba(255,255,255,.75);background:transparent;transition:all .35s;z-index:1}
+  .pstep .lab{font-size:13.5px;margin-top:6px;color:rgba(255,255,255,.7);transition:color .35s;white-space:nowrap}
+  .pstep::before{content:"";position:absolute;top:19px;left:-60px;width:120px;height:2px;background:rgba(255,255,255,.35)}
+  .pstep:first-child::before{display:none}
+  .pstep.done .dot{background:var(--vert-clair);border-color:var(--vert-clair);color:#fff}
+  .pstep.done::before,.pstep.current::before{background:#CFE3C8}
+  .pstep.current .dot{background:#fff;border-color:#fff;color:var(--vert);transform:scale(1.12);box-shadow:0 0 0 6px rgba(255,255,255,.18)}
+  .pstep.current .lab{color:#fff;font-weight:600}
+  .pstep.alert.current .dot{background:var(--orange);border-color:var(--orange);color:#fff;box-shadow:0 0 0 6px rgba(217,102,31,.3)}
+
+  /* ---------- Corps ---------- */
+  main{display:grid;grid-template-columns:640px 1fr;gap:36px;padding:26px 48px 16px;position:relative;min-height:0;overflow:hidden}
+  .col{display:flex;flex-direction:column;gap:18px;min-height:0}
+  .card{background:var(--blanc);border:1px solid var(--gris-2);border-radius:18px;box-shadow:0 6px 18px rgba(14,92,27,.08)}
+  .card-title{font-size:15px;font-weight:700;letter-spacing:1.2px;text-transform:uppercase;color:var(--vert-clair);margin-bottom:12px}
+
+  /* Code SQL */
+  .code{background:var(--code-bg);border-radius:18px;padding:18px 0;box-shadow:0 10px 26px rgba(0,0,0,.18);position:relative}
+  .code .card-title{color:#8FC79A;padding:0 26px}
+  .stmt{font-family:var(--mono);font-size:20px;line-height:1.42;color:var(--code-txt);padding:5px 26px 5px 22px;
+    border-left:6px solid transparent;position:relative;transition:background .35s,border-color .35s,opacity .35s}
+  .stmt + .stmt{margin-top:6px}
+  .kw{color:#7FD08F;font-weight:700}
+  .str{color:#F3C08A}
+  .num{color:#9CC9FF}
+  .stmt .tag{position:absolute;right:18px;top:50%;transform:translateY(-50%);font-family:var(--sans);font-size:14px;font-weight:700;
+    padding:5px 11px;border-radius:999px;opacity:0;transition:opacity .35s}
+  .stmt.active{background:rgba(127,208,143,.16);border-left-color:#7FD08F}
+  .stmt.done .tag{opacity:1;background:#2E6B3A;color:#DDF3E1}
+  .stmt.provisoire .tag{opacity:1;background:#6B5A1E;color:#FFF0C2}
+  .stmt.skipped{opacity:.38}
+  .stmt.skipped .tag{opacity:1;background:#4A3A33;color:#F6D3C2}
+  .stmt.annule{background:rgba(217,102,31,.14);border-left-color:var(--orange)}
+  .stmt.annule .tag{opacity:1;background:var(--orange);color:#fff}
+  .stmt.annule .txt{text-decoration:line-through;text-decoration-color:rgba(255,160,110,.85);text-decoration-thickness:2px}
+
+  /* Journal */
+  .journal{padding:16px 22px;flex:1;min-height:0;display:flex;flex-direction:column}
+  .journal ul{list-style:none;font-family:var(--mono);font-size:15px;display:flex;flex-direction:column;gap:5px;overflow:hidden}
+  .journal li{padding:5px 11px;border-radius:9px;background:var(--gris);color:var(--texte-2);animation:slideIn .4s ease}
+  .journal li.ok{background:var(--vert-pale);color:var(--vert)}
+  .journal li.warn{background:var(--orange-pale);color:#8A3B0C}
+  @keyframes slideIn{from{opacity:0;transform:translateX(-14px)}to{opacity:1;transform:none}}
+
+  /* Comptes */
+  .accounts{display:grid;grid-template-columns:1fr 1fr;gap:26px}
+  .acc{padding:26px 28px 24px;position:relative;overflow:hidden;transition:box-shadow .4s,border-color .4s}
+  .acc .who{display:flex;align-items:center;gap:12px;font-size:20px;font-weight:600;color:var(--texte-2)}
+  .acc .avatar{width:44px;height:44px;border-radius:50%;display:grid;place-items:center;background:var(--vert-pale);color:var(--vert);font-weight:800;font-size:18px}
+  .acc .bal{font-family:var(--serif);font-size:76px;line-height:1;margin-top:18px;color:var(--texte);font-variant-numeric:tabular-nums;transition:color .4s}
+  .acc .cur{font-size:26px;color:var(--texte-2);margin-left:8px;font-family:var(--sans)}
+  .acc .state{display:inline-block;margin-top:16px;font-size:15px;font-weight:700;padding:6px 13px;border-radius:999px;background:var(--vert-pale);color:var(--vert);transition:all .35s}
+  .acc .state.prov{background:#FFF4D6;color:#7A5A00}
+  .acc .state.rest{background:var(--vert-pale);color:var(--vert)}
+  .acc.flash-debit{border-color:var(--orange);box-shadow:0 0 0 4px rgba(217,102,31,.18),0 6px 18px rgba(14,92,27,.08)}
+  .acc.flash-debit .bal{color:var(--orange)}
+  .acc.flash-rest{border-color:var(--vert-clair);box-shadow:0 0 0 4px rgba(94,143,78,.25),0 6px 18px rgba(14,92,27,.08)}
+  .float{position:absolute;right:26px;top:78px;font-size:30px;font-weight:800;pointer-events:none;opacity:0}
+  .float.go-minus{color:var(--orange);animation:floatUp 1.6s ease forwards}
+  .float.go-plus{color:var(--vert-2);animation:floatUp 1.6s ease forwards}
+  @keyframes floatUp{0%{opacity:0;transform:translateY(16px)}20%{opacity:1}80%{opacity:1}100%{opacity:0;transform:translateY(-30px)}}
+
+  /* Flux d'argent entre les comptes */
+  .transfer{position:relative;height:0}
+  .coin{position:absolute;width:34px;height:34px;border-radius:50%;background:radial-gradient(circle at 35% 35%,#FFE3A3,#E0A43A);
+    box-shadow:0 2px 8px rgba(0,0,0,.3);top:-150px;left:330px;opacity:0;pointer-events:none;z-index:3}
+  .coin.run{animation:coinRun 1.3s ease-in-out forwards}
+  @keyframes coinRun{0%{opacity:0;transform:translate(0,0) scale(.6)}15%{opacity:1;transform:translate(10px,-10px) scale(1)}
+    55%{opacity:1;transform:translate(70px,-50px) scale(1)}80%{opacity:.9;transform:translate(110px,-20px) scale(.9)}100%{opacity:0;transform:translate(120px,10px) scale(.4)}}
+  .stuck{position:absolute;top:-64px;left:600px;font-size:15px;font-weight:700;color:var(--orange);background:var(--orange-pale);
+    padding:8px 13px;border-radius:999px;opacity:0;transition:opacity .4s;white-space:nowrap}
+  .stuck.show{opacity:1}
+
+  /* Explication */
+  .explain{padding:26px 30px;flex:1;min-height:0;display:flex;flex-direction:column;gap:14px}
+  .explain h2{font-family:var(--serif);font-weight:400;font-size:34px;color:var(--vert)}
+  .explain p{font-size:22px;line-height:1.5;color:var(--texte)}
+  .explain .note{font-size:19px;color:var(--texte-2);background:var(--gris);border-left:5px solid var(--vert-clair);padding:12px 16px;border-radius:8px}
+  .explain .note.warn{border-left-color:var(--orange);background:var(--orange-pale);color:#7A3410}
+  .explain.alert h2{color:var(--orange)}
+  .fade{animation:fadeIn .45s ease}
+  @keyframes fadeIn{from{opacity:0;transform:translateY(8px)}to{opacity:1;transform:none}}
+
+  /* ---------- Panne ---------- */
+  #blackout{position:absolute;inset:0;background:rgba(8,14,10,.0);pointer-events:none;transition:background .5s;z-index:5}
+  #blackout.on{background:rgba(8,14,10,.42)}
+  #flash{position:absolute;inset:0;background:#fff;opacity:0;pointer-events:none;z-index:6}
+  #flash.go{animation:flash .9s ease}
+  @keyframes flash{0%{opacity:0}8%{opacity:.85}16%{opacity:.1}26%{opacity:.6}40%{opacity:0}100%{opacity:0}}
+  #bolt{position:absolute;left:300px;bottom:8px;width:96px;height:96px;opacity:0;z-index:7;pointer-events:none;filter:drop-shadow(0 0 18px rgba(255,170,60,.9))}
+  #bolt.show{animation:boltIn .6s ease forwards}
+  @keyframes boltIn{0%{opacity:0;transform:scale(.4) rotate(-12deg)}60%{opacity:1;transform:scale(1.12) rotate(4deg)}100%{opacity:1;transform:scale(1) rotate(0)}}
+  #alertbar{position:absolute;left:50%;bottom:30px;transform:translate(-50%,20px);z-index:8;opacity:0;transition:all .45s;
+    background:var(--orange);color:#fff;font-size:24px;font-weight:700;padding:14px 30px;border-radius:999px;display:flex;gap:14px;align-items:center;
+    box-shadow:0 10px 30px rgba(217,102,31,.45);pointer-events:none;white-space:nowrap}
+  #alertbar.show{opacity:1;transform:translate(-50%,0)}
+  #alertbar .pulse{width:14px;height:14px;border-radius:50%;background:#fff;animation:pulse 1s infinite}
+  @keyframes pulse{0%,100%{opacity:1}50%{opacity:.25}}
+  .shake{animation:shake .5s ease}
+  @keyframes shake{0%,100%{transform:translate(0)}20%{transform:translate(-8px,2px)}40%{transform:translate(7px,-2px)}60%{transform:translate(-5px,1px)}80%{transform:translate(4px,0)}}
+
+  /* ---------- Récupération ---------- */
+  #reboot{position:absolute;inset:0;z-index:9;background:rgba(255,255,255,.94);display:none;flex-direction:column;align-items:center;justify-content:center;gap:22px}
+  #reboot.show{display:flex;animation:fadeIn .3s ease}
+  #reboot .spinner{width:84px;height:84px;border-radius:50%;border:8px solid var(--vert-pale);border-top-color:var(--vert);animation:spin .9s linear infinite}
+  @keyframes spin{to{transform:rotate(360deg)}}
+  #reboot .t{font-family:var(--serif);font-size:38px;color:var(--vert)}
+  #reboot .s{font-size:21px;color:var(--texte-2);font-family:var(--mono)}
+
+  /* ---------- Conclusion ---------- */
+  #conclusion{display:none;flex-direction:column;gap:20px}
+  #conclusion.show{display:flex}
+  .banner{background:linear-gradient(135deg,var(--vert),var(--vert-2));color:#fff;border-radius:20px;padding:24px 32px;display:flex;align-items:center;gap:22px;
+    box-shadow:0 12px 28px rgba(14,92,27,.25)}
+  .banner .big{font-family:var(--serif);font-size:46px}
+  .banner .small{font-size:20px;opacity:.9;margin-top:4px}
+  .banner .badge{width:76px;height:76px;border-radius:50%;background:rgba(255,255,255,.16);display:grid;place-items:center;font-size:40px;font-family:var(--serif);flex:none}
+  .compare{display:grid;grid-template-columns:1fr 1fr;gap:20px}
+  .scen{padding:20px 24px}
+  .scen h3{font-size:19px;margin-bottom:12px;display:flex;align-items:center;gap:10px;flex-wrap:wrap}
+  .scen h3 .pill{font-size:13.5px;padding:4px 10px;border-radius:999px;font-weight:700;white-space:nowrap}
+  .scen.a h3 .pill{background:var(--orange-pale);color:#8A3B0C}
+  .scen.b h3 .pill{background:var(--vert-pale);color:var(--vert)}
+  .scen .row{display:flex;justify-content:space-between;font-size:20px;padding:6px 0;border-bottom:1px dashed var(--gris-2)}
+  .scen .row b{font-family:var(--serif);font-size:26px;font-weight:400}
+  .scen .res{margin-top:10px;font-size:17px;color:var(--texte-2)}
+  .quiz{padding:20px 24px}
+  .quiz .q{font-size:22px;font-weight:600;margin-bottom:14px}
+  .opts{display:grid;grid-template-columns:repeat(4,1fr);gap:12px}
+  .opt{font:inherit;font-size:20px;padding:13px 10px;border-radius:12px;border:2px solid var(--gris-2);background:#fff;cursor:pointer;transition:all .25s;color:var(--texte)}
+  .opt:hover{border-color:var(--vert-clair);background:var(--vert-pale)}
+  .opt.good{border-color:var(--vert);background:var(--vert);color:#fff}
+  .opt.bad{border-color:var(--orange);background:var(--orange-pale);color:#8A3B0C}
+  .feedback{margin-top:12px;font-size:19px;min-height:28px}
+  .feedback.good{color:var(--vert)}
+  .feedback.bad{color:#8A3B0C}
+
+  /* ---------- Pied ---------- */
+  footer{display:flex;align-items:center;justify-content:space-between;padding:0 48px;border-top:2px solid var(--vert-clair);background:#FAFBF9}
+  .brand{font-family:var(--serif);color:var(--vert);font-size:18px}
+  .btns{display:flex;gap:14px;align-items:center}
+  .btn{font:inherit;font-size:19px;font-weight:600;padding:13px 26px;border-radius:12px;border:2px solid var(--vert);cursor:pointer;transition:all .2s;
+    display:flex;align-items:center;gap:10px}
+  .btn.prim{background:var(--vert);color:#fff}
+  .btn.prim:hover{background:var(--vert-2)}
+  .btn.sec{background:#fff;color:var(--vert)}
+  .btn.sec:hover{background:var(--vert-pale)}
+  .btn.ghost{background:transparent;border-color:var(--gris-2);color:var(--texte-2)}
+  .btn.ghost:hover{border-color:var(--vert-clair);color:var(--vert)}
+  .btn:disabled{opacity:.35;cursor:default}
+  .hint{font-size:15px;color:var(--texte-2)}
+  .hidden{display:none !important}
+
+  /* ================= Onglets ================= */
+  .stage.off{display:none}
+  .tabs{display:flex;gap:6px;background:#EEF2EC;padding:5px;border-radius:12px}
+  .tab{font:inherit;font-size:16px;font-weight:600;padding:9px 16px;border-radius:9px;border:0;background:transparent;color:var(--texte-2);cursor:pointer;transition:all .2s;white-space:nowrap}
+  .tab:hover{color:var(--vert)}
+  .tab.on{background:var(--vert);color:#fff;box-shadow:0 4px 10px rgba(14,92,27,.25)}
+
+  /* ================= Simulation BASE ================= */
+  #baseStage main{grid-template-columns:560px 1fr}
+  .props{padding:22px 26px;display:flex;flex-direction:column;gap:14px}
+  .prop{display:flex;gap:16px;align-items:flex-start;padding:14px 16px;border-radius:14px;border:2px solid transparent;background:var(--gris);transition:all .4s;opacity:.55}
+  .prop .lt{flex:none;width:58px;height:58px;border-radius:14px;background:#fff;border:2px solid var(--vert-clair);display:grid;place-items:center;
+    font-family:var(--serif);font-size:24px;color:var(--vert);font-weight:700;transition:all .4s}
+  .prop h4{font-size:21px;color:var(--texte)}
+  .prop h4 i{font-weight:400;color:var(--texte-2)}
+  .prop p{font-size:18px;color:var(--texte-2);margin-top:3px;line-height:1.4}
+  .prop.cur{opacity:1;background:var(--vert-pale);border-color:var(--vert-clair);box-shadow:0 8px 20px rgba(14,92,27,.12)}
+  .prop.cur .lt{background:var(--vert);color:#fff;border-color:var(--vert)}
+  .prop.seen{opacity:1}
+  .bnote{font-size:16.5px;color:var(--texte-2);border-top:1px dashed var(--gris-2);padding-top:12px;line-height:1.45}
+  .bnote b{color:var(--vert)}
+
+  .servers{display:grid;grid-template-columns:1fr 150px 1fr;align-items:center;gap:0}
+  .srv{padding:22px 26px 20px;text-align:left;position:relative;transition:border-color .4s,box-shadow .4s}
+  .srv .sh{display:flex;align-items:center;gap:12px;font-size:20px;font-weight:600;color:var(--texte-2)}
+  .srv .sh .ic{width:44px;height:44px;border-radius:12px;background:var(--vert-pale);display:grid;place-items:center}
+  .srv .cnt{display:flex;align-items:center;gap:14px;margin-top:14px}
+  .srv .heart{width:58px;height:58px;flex:none}
+  .srv .heart path{fill:#E0474C}
+  .srv .heart.beat{animation:beat .6s ease}
+  @keyframes beat{0%{transform:scale(1)}30%{transform:scale(1.25)}60%{transform:scale(.95)}100%{transform:scale(1)}}
+  .srv .n{font-family:var(--serif);font-size:74px;line-height:1;font-variant-numeric:tabular-nums;transition:color .4s}
+  .srv .lk{font-size:20px;color:var(--texte-2);margin-left:4px}
+  .sync-st{display:inline-flex;align-items:center;gap:8px;margin-top:14px;font-size:15.5px;font-weight:700;padding:6px 13px;border-radius:999px;transition:all .35s}
+  .sync-st .d{width:10px;height:10px;border-radius:50%;background:currentColor}
+  .sync-st.wait{background:var(--orange-pale);color:#8A3B0C}
+  .sync-st.wait .d{animation:pulse 1s infinite}
+  .sync-st.ok{background:var(--vert-pale);color:var(--vert)}
+  .srv.diff{border-color:var(--orange);box-shadow:0 0 0 4px rgba(217,102,31,.14),0 6px 18px rgba(14,92,27,.08)}
+  .srv.diff .n{color:var(--orange)}
+  .srv.same{border-color:var(--vert-clair);box-shadow:0 0 0 5px rgba(94,143,78,.22),0 6px 18px rgba(14,92,27,.08)}
+  .srv .users{position:absolute;right:18px;top:18px;display:flex;gap:6px}
+  .srv .u{width:30px;height:30px;border-radius:50%;background:var(--bleu,#1F4E9C);color:#fff;font-size:13px;font-weight:700;display:grid;place-items:center;opacity:0;transform:translateY(-6px)}
+  .srv .u.on{animation:uIn .5s ease forwards}
+  @keyframes uIn{to{opacity:1;transform:none}}
+  .srv .ans{position:absolute;right:18px;top:56px;font-size:14px;font-weight:700;color:var(--vert);opacity:0;transition:opacity .4s}
+  .srv .ans.on{opacity:1}
+
+  .link{position:relative;height:150px}
+  .link svg{width:150px;height:150px}
+  .link .ln{stroke:#C9D2CB;stroke-width:3;stroke-dasharray:7 7;fill:none}
+  .link .ah{fill:#C9D2CB}
+  .link.run .ln{stroke:var(--orange);animation:dash 0.8s linear infinite}
+  .link.run .ah{fill:var(--orange)}
+  .link.done .ln{stroke:var(--vert-clair);stroke-dasharray:none}
+  .link.done .ah{fill:var(--vert-clair)}
+  @keyframes dash{to{stroke-dashoffset:-28}}
+  .pkt{opacity:0}
+  .link.run .pkt{animation:pkt 1.4s ease-in-out infinite}
+  .link.run .pkt.p2{animation-delay:.7s}
+  @keyframes pkt{0%{opacity:0;transform:translateX(0)}15%{opacity:1}85%{opacity:1}100%{opacity:0;transform:translateX(-96px)}}
+  .link .lab{position:absolute;left:0;right:0;bottom:2px;text-align:center;font-size:14px;font-weight:700;color:var(--texte-2)}
+  .link.run .lab{color:var(--orange)}
+  .link.done .lab{color:var(--vert)}
+
+  .bexplain{padding:24px 30px;display:flex;flex-direction:column;gap:14px;flex:1;min-height:0}
+  .bexplain h2{font-family:var(--serif);font-weight:400;font-size:34px;color:var(--vert)}
+  .bexplain p{font-size:22px;line-height:1.5}
+  .msg{font-size:22px;font-weight:600;color:var(--vert);background:var(--vert-pale);border-left:6px solid var(--vert);padding:14px 18px;border-radius:10px}
+  .msg.w{color:#8A3B0C;background:var(--orange-pale);border-left-color:var(--orange)}
+  .syncbtn{align-self:flex-start;font:inherit;font-size:21px;font-weight:700;padding:14px 26px;border-radius:14px;border:0;cursor:pointer;
+    background:linear-gradient(135deg,var(--orange),#E9843F);color:#fff;box-shadow:0 10px 22px rgba(217,102,31,.35);display:flex;align-items:center;gap:12px;transition:transform .15s}
+  .syncbtn:hover{transform:translateY(-2px)}
+  .syncbtn.ok{background:linear-gradient(135deg,var(--vert),var(--vert-2));box-shadow:0 10px 22px rgba(14,92,27,.3)}
+  .syncbtn .sp{display:inline-block}
+  .syncbtn.busy .sp{animation:spin .9s linear infinite}
+  .confirm{font-size:22px;font-weight:700;color:var(--vert);display:flex;align-items:center;gap:12px;opacity:0;transform:translateY(8px);transition:all .45s}
+  .confirm.on{opacity:1;transform:none}
+  .confirm .ck{width:38px;height:38px;border-radius:50%;background:var(--vert);color:#fff;display:grid;place-items:center;font-size:22px}
+  .bquiz{padding:24px 30px;flex:1}
+  .bquiz .q{font-size:24px;font-weight:600;line-height:1.4;margin-bottom:18px}
+  .bopts{display:flex;flex-direction:column;gap:12px}
+  .bopt{font:inherit;font-size:21px;text-align:left;padding:14px 18px;border-radius:12px;border:2px solid var(--gris-2);background:#fff;cursor:pointer;transition:all .25s;color:var(--texte)}
+  .bopt:hover{border-color:var(--vert-clair);background:var(--vert-pale)}
+  .bopt.good{border-color:var(--vert);background:var(--vert);color:#fff}
+  .bopt.bad{border-color:var(--orange);background:var(--orange-pale);color:#8A3B0C}
+  .bfeed{margin-top:14px;font-size:20px;line-height:1.45;min-height:30px}
+  .bfeed.good{color:var(--vert)} .bfeed.bad{color:#8A3B0C}
+</style>
+</head>
+<body>
+<div class="stage" id="stage">
+  <!-- ======= En-tête ======= -->
+  <header>
+    <div>
+      <h1>Le virement interrompu, pas à pas</h1>
+      <div class="sous">Bases de données avancées · L2 IDS · SupNum — Propriété d’atomicité (ACID)</div>
+    </div>
+    <nav class="progress" id="progress"></nav>
+  </header>
+
+  <!-- ======= Corps ======= -->
+  <main id="main">
+    <div class="col">
+      <div class="code" id="code">
+        <div class="card-title">La transaction SQL</div>
+        <div class="stmt" data-k="start"><span class="txt"><span class="kw">START TRANSACTION</span>;</span><span class="tag"></span></div>
+        <div class="stmt" data-k="u1"><span class="txt"><span class="kw">UPDATE</span> compte<br><span class="kw">SET</span> solde = solde - <span class="num">5000</span><br><span class="kw">WHERE</span> titulaire = <span class="str">'vous'</span>;</span><span class="tag"></span></div>
+        <div class="stmt" data-k="u2"><span class="txt"><span class="kw">UPDATE</span> compte<br><span class="kw">SET</span> solde = solde + <span class="num">5000</span><br><span class="kw">WHERE</span> titulaire = <span class="str">'ami'</span>;</span><span class="tag"></span></div>
+        <div class="stmt" data-k="commit"><span class="txt"><span class="kw">COMMIT</span>;</span><span class="tag"></span></div>
+      </div>
+      <div class="card journal">
+        <div class="card-title">Journal des transactions du SGBD</div>
+        <ul id="journal"></ul>
+      </div>
+    </div>
+
+    <div class="col" id="right">
+      <div id="live" class="col" style="gap:22px">
+        <div class="accounts">
+          <div class="card acc" id="accA">
+            <div class="who"><div class="avatar">V</div>Votre compte</div>
+            <div><span class="bal" id="balA">20 000</span><span class="cur">MRU</span></div>
+            <span class="state" id="stA">Solde validé</span>
+            <div class="float" id="fA"></div>
+          </div>
+          <div class="card acc" id="accB">
+            <div class="who"><div class="avatar">A</div>Compte de votre ami</div>
+            <div><span class="bal" id="balB">3 000</span><span class="cur">MRU</span></div>
+            <span class="state" id="stB">Solde validé</span>
+            <div class="float" id="fB"></div>
+          </div>
+        </div>
+        <div class="transfer"><div class="coin" id="coin"></div><div class="stuck" id="stuck">Crédit jamais exécuté</div></div>
+        <div class="card explain" id="explain"></div>
+      </div>
+
+      <div id="conclusion">
+        <div class="banner">
+          <div class="badge">A</div>
+          <div><div class="big">Atomicité : tout ou rien</div>
+            <div class="small">Les deux UPDATE forment un bloc : soit ils sont validés ensemble par COMMIT, soit aucune modification n’est conservée.</div></div>
+        </div>
+        <div class="compare">
+          <div class="card scen a">
+            <h3>Panne avant COMMIT <span class="pill">RIEN n’est conservé</span></h3>
+            <div class="row"><span>Votre compte</span><b>20 000 MRU</b></div>
+            <div class="row"><span>Compte de l’ami</span><b>3 000 MRU</b></div>
+            <div class="res">Retour à l’état initial : total 23 000 MRU.</div>
+          </div>
+          <div class="card scen b">
+            <h3>COMMIT exécuté <span class="pill">TOUT est conservé</span></h3>
+            <div class="row"><span>Votre compte</span><b>15 000 MRU</b></div>
+            <div class="row"><span>Compte de l’ami</span><b>8 000 MRU</b></div>
+            <div class="res">Virement complet : total toujours 23 000 MRU.</div>
+          </div>
+        </div>
+        <div class="card quiz">
+          <div class="q">Question : quelle propriété ACID vient d’être illustrée ?</div>
+          <div class="opts" id="opts">
+            <button class="opt" data-ok="1">Atomicité</button>
+            <button class="opt" data-ok="0" data-why="La cohérence est bien préservée (le total reste 23 000 MRU), mais c’est l’atomicité qui a annulé l’opération incomplète.">Cohérence</button>
+            <button class="opt" data-ok="0" data-why="L’isolation concerne les transactions simultanées. Ici, une seule transaction est en jeu.">Isolation</button>
+            <button class="opt" data-ok="0" data-why="La durabilité concerne une transaction déjà validée par COMMIT. Ici, le COMMIT n’a jamais eu lieu.">Durabilité</button>
+          </div>
+          <div class="feedback" id="feedback"></div>
+        </div>
+      </div>
+    </div>
+
+    <div id="blackout"></div>
+    <div id="flash"></div>
+    <svg id="bolt" viewBox="0 0 100 100" aria-hidden="true">
+      <path d="M58 4 L22 56 L46 56 L36 96 L80 38 L54 38 L66 4 Z" fill="#F7B43A" stroke="#D9661F" stroke-width="3" stroke-linejoin="round"/>
+    </svg>
+    <div id="alertbar"><span class="pulse"></span>Coupure de courant — transaction interrompue avant validation</div>
+    <div id="reboot"><div class="spinner"></div><div class="t">Redémarrage du SGBD…</div><div class="s" id="rebootTxt">Lecture du journal des transactions</div></div>
+  </main>
+
+  <!-- ======= Pied ======= -->
+  <footer>
+    <div class="tabs"><button class="tab" data-sim="acid">ACID — Virement bancaire</button><button class="tab" data-sim="base">BASE — Compteur de likes</button></div>
+    <div class="hint">Flèches ← → ou Espace · F : plein écran</div>
+    <div class="btns">
+      <button class="btn ghost" id="restart">↺ Recommencer</button>
+      <button class="btn sec" id="prev">← Précédent</button>
+      <button class="btn prim" id="next">Suivant →</button>
+    </div>
+  </footer>
+</div>
+
+<script>
+(function(){
+  "use strict";
+  const STEPS = [
+    {lab:"Début"},{lab:"Débit"},{lab:"Panne",alert:true},{lab:"Récupération"},{lab:"Conclusion"}
+  ];
+  const $ = id => document.getElementById(id);
+  const stage = $("stage");
+  let step = 0;            // 0..4
+  let timers = [];
+  const disp = {A:20000, B:3000};   // valeurs affichées
+
+  /* ---------- Mise à l'échelle 16:9 ---------- */
+  /* mise à l'échelle gérée globalement (voir onglets) */
+
+  /* ---------- Barre de progression ---------- */
+  const prog = $("progress");
+  STEPS.forEach((s,i)=>{
+    const d = document.createElement("div");
+    d.className = "pstep"+(s.alert?" alert":"");
+    d.innerHTML = '<div class="dot">'+(i+1)+'</div><div class="lab">'+s.lab+'</div>';
+    d.addEventListener("click", ()=>go(i, i>step));
+    prog.appendChild(d);
+  });
+
+  /* ---------- Outils ---------- */
+  const fmt = n => n.toLocaleString("fr-FR").replace(/ | /g," ");
+  function later(fn, ms){ const t=setTimeout(fn,ms); timers.push(t); return t; }
+  function clearTimers(){ timers.forEach(clearTimeout); timers=[]; animTokens.A++; animTokens.B++; }
+  const animTokens = {A:0,B:0};
+  function setBal(who, val){ disp[who]=val; $("bal"+who).textContent = fmt(val); }
+  function animBal(who, to, ms){
+    const from = disp[who], tok = ++animTokens[who], t0 = performance.now();
+    function frame(t){
+      if(tok!==animTokens[who]) return;
+      const k = Math.min(1,(t-t0)/ms), e = k<.5 ? 2*k*k : 1-Math.pow(-2*k+2,2)/2;
+      const v = Math.round((from+(to-from)*e)/10)*10;
+      disp[who]=v; $("bal"+who).textContent = fmt(v);
+      if(k<1) requestAnimationFrame(frame); else setBal(who,to);
+    }
+    requestAnimationFrame(frame);
+  }
+  function floatTxt(id, txt, cls){
+    const el=$(id); el.className="float"; void el.offsetWidth; el.textContent=txt; el.className="float "+cls;
+  }
+  function stmtState(map){
+    document.querySelectorAll(".stmt").forEach(el=>{
+      const k = el.dataset.k, st = map[k] || "";
+      el.className = "stmt"+(st?" "+st.split(":")[0]:"");
+      el.querySelector(".tag").textContent = st.includes(":") ? st.split(":")[1] : "";
+    });
+  }
+  function journal(lines){
+    const ul=$("journal"); ul.innerHTML="";
+    lines.forEach(([txt,cls])=>{ const li=document.createElement("li"); li.textContent=txt; if(cls) li.className=cls; ul.appendChild(li); });
+  }
+  function explain(html, alert){
+    const ex=$("explain"); ex.className="card explain fade"+(alert?" alert":""); ex.innerHTML=html;
+  }
+  function accState(a,b){
+    const set=(id,[txt,cls])=>{ const el=$(id); el.textContent=txt; el.className="state"+(cls?" "+cls:""); };
+    set("stA",a); set("stB",b);
+  }
+  function resetFx(){
+    ["accA","accB"].forEach(id=>$(id).classList.remove("flash-debit","flash-rest"));
+    $("blackout").classList.remove("on"); $("bolt").classList.remove("show"); $("alertbar").classList.remove("show");
+    $("reboot").classList.remove("show"); $("coin").classList.remove("run"); $("stuck").classList.remove("show");
+    $("fA").className="float"; $("fB").className="float";
+  }
+
+  /* ---------- Étapes ---------- */
+  const J_START = ["T1 · START TRANSACTION",""];
+  const J_U1 = ["T1 · UPDATE vous : 20 000 → 15 000 (non validé)",""];
+  const J_PANNE = ["⚡ Panne : T1 interrompue, aucun COMMIT","warn"];
+  const J_REC = ["Récupération : T1 sans COMMIT → annulation (ROLLBACK)","ok"];
+  const J_REST = ["T1 · vous : 15 000 → 20 000 (restauré)","ok"];
+
+  function render(i, animate){
+    clearTimers(); resetFx();
+    const live=$("live"), concl=$("conclusion");
+    live.classList.toggle("hidden", i===4); concl.classList.toggle("show", i===4);
+
+    if(i===0){
+      setBal("A",20000); setBal("B",3000);
+      stmtState({start:"active"});
+      accState(["Solde validé",""],["Solde validé",""]);
+      journal([J_START]);
+      explain('<h2>Étape 1 — La transaction commence</h2>'+
+        '<p><b>START TRANSACTION</b> ouvre un bloc d’opérations qui devront réussir ou échouer <b>ensemble</b>.</p>'+
+        '<p>Aucun solde n’a encore été modifié : vous avez <b>20 000 MRU</b>, votre ami <b>3 000 MRU</b>.</p>'+
+        '<div class="note">Total des deux comptes : 23 000 MRU. Ce total devra être le même à la fin.</div>');
+    }
+    if(i===1){
+      stmtState({start:"done:exécuté", u1:"active provisoire:provisoire"});
+      accState(["Modification provisoire","prov"],["Solde validé",""]);
+      journal([J_START,J_U1]);
+      if(animate){ setBal("A",20000); $("accA").classList.add("flash-debit"); floatTxt("fA","− 5 000","go-minus");
+        later(()=>{ $("coin").classList.add("run"); },150); animBal("A",15000,1200);
+        later(()=>$("accA").classList.remove("flash-debit"),1800);
+      } else setBal("A",15000);
+      setBal("B",3000);
+      explain('<h2>Étape 2 — Débit de votre compte</h2>'+
+        '<p>Le premier <b>UPDATE</b> s’exécute : votre solde passe de 20 000 à <b>15 000 MRU</b>. Le compte de l’ami reste à 3 000 MRU.</p>'+
+        '<div class="note warn">Instruction exécutée ≠ transaction validée. Tant qu’il n’y a pas de <b>COMMIT</b>, cette modification est <b>provisoire</b> : les autres utilisateurs voient toujours l’ancien solde et le SGBD peut l’annuler.</div>');
+    }
+    if(i===2){
+      setBal("A",15000); setBal("B",3000);
+      stmtState({start:"done:exécuté", u1:"provisoire:provisoire", u2:"skipped:non exécuté", commit:"skipped:non exécuté"});
+      accState(["Modification provisoire","prov"],["Solde validé",""]);
+      journal([J_START,J_U1,J_PANNE]);
+      $("stuck").classList.add("show");
+      if(animate){
+        $("flash").classList.remove("go"); void $("flash").offsetWidth; $("flash").classList.add("go");
+        stage.classList.remove("shake"); void stage.offsetWidth; stage.classList.add("shake");
+        later(()=>stage.classList.remove("shake"),600);
+      }
+      $("blackout").classList.add("on"); $("bolt").classList.add("show");
+      later(()=>$("alertbar").classList.add("show"), animate?350:0);
+      explain('<h2>Étape 3 — Coupure de courant !</h2>'+
+        '<p>Le serveur s’arrête brutalement. Le deuxième <b>UPDATE</b> (crédit de l’ami) et le <b>COMMIT</b> ne sont <b>jamais exécutés</b>.</p>'+
+        '<div class="note warn"><b>Transaction interrompue avant validation.</b> Votre compte est débité, celui de l’ami n’est pas crédité : 5 000 MRU semblent avoir disparu.</div>', true);
+    }
+    if(i===3){
+      setBal("B",3000);
+      stmtState({start:"done:exécuté", u1:"annule:annulé (ROLLBACK)", u2:"skipped:non exécuté", commit:"skipped:non exécuté"});
+      const finish = ()=>{
+        accState(["Solde restauré","rest"],["Solde inchangé",""]);
+        journal([J_START,J_U1,J_PANNE,J_REC,J_REST]);
+        $("accA").classList.add("flash-rest");
+      };
+      explain('<h2>Étape 4 — Récupération après la panne</h2>'+
+        '<p>Au redémarrage, le SGBD relit son <b>journal des transactions</b>. La transaction T1 n’a pas de COMMIT : il <b>annule</b> ses modifications (<b>ROLLBACK</b>).</p>'+
+        '<p>Votre solde revient à <b>20 000 MRU</b>. Le compte de l’ami reste à <b>3 000 MRU</b>.</p>'+
+        '<div class="note">Rien n’a été perdu : le système revient à l’état d’avant la transaction. Total : 23 000 MRU.</div>');
+      if(animate){
+        setBal("A",15000); accState(["Modification provisoire","prov"],["Solde validé",""]);
+        journal([J_START,J_U1,J_PANNE]);
+        $("reboot").classList.add("show"); $("rebootTxt").textContent="Lecture du journal des transactions…";
+        later(()=>{ $("rebootTxt").textContent="T1 : aucun COMMIT trouvé → annulation"; },1100);
+        later(()=>{ $("reboot").classList.remove("show"); floatTxt("fA","+ 5 000","go-plus"); animBal("A",20000,1200); finish(); },2200);
+      } else { setBal("A",20000); finish(); }
+    }
+    if(i===4){
+      setBal("A",20000); setBal("B",3000);
+      stmtState({start:"done:exécuté", u1:"annule:annulé (ROLLBACK)", u2:"skipped:non exécuté", commit:"skipped:non exécuté"});
+      journal([J_START,J_U1,J_PANNE,J_REC,J_REST]);
+      resetQuiz();
+    }
+
+    // barre de progression et boutons
+    [...prog.children].forEach((d,k)=>{ d.className="pstep"+(STEPS[k].alert?" alert":"")+(k<i?" done":"")+(k===i?" current":""); });
+    $("prev").disabled = i===0; $("next").disabled = i===4;
+  }
+
+  function go(i, animate){ if(i<0||i>4) return; step=i; render(step, animate); }
+
+  /* ---------- Question finale ---------- */
+  function resetQuiz(){
+    document.querySelectorAll(".opt").forEach(b=>b.className="opt");
+    const f=$("feedback"); f.textContent=""; f.className="feedback";
+  }
+  document.querySelectorAll(".opt").forEach(b=>b.addEventListener("click",()=>{
+    const f=$("feedback");
+    if(b.dataset.ok==="1"){
+      document.querySelectorAll(".opt").forEach(o=>{ if(o!==b) o.className="opt"; });
+      b.className="opt good"; f.className="feedback good";
+      f.textContent="Bravo ! L’atomicité garantit qu’une transaction s’exécute entièrement ou pas du tout.";
+    } else { b.className="opt bad"; f.className="feedback bad"; f.textContent="Pas tout à fait. "+b.dataset.why; }
+  }));
+
+  /* ---------- Navigation ---------- */
+  $("next").addEventListener("click",()=>go(step+1,true));
+  $("prev").addEventListener("click",()=>go(step-1,false));
+  $("restart").addEventListener("click",()=>go(0,false));
+  document.addEventListener("keydown",e=>{
+    if(window.SIM&&window.SIM!=="acid") return;
+    if(e.key==="ArrowRight"||e.key===" "||e.key==="PageDown"){ e.preventDefault(); go(step+1,true); }
+    else if(e.key==="ArrowLeft"||e.key==="PageUp"){ e.preventDefault(); go(step-1,false); }
+    else if(e.key==="Home"){ go(0,false); }
+    else if(e.key==="f"||e.key==="F"){
+      if(!document.fullscreenElement) document.documentElement.requestFullscreen && document.documentElement.requestFullscreen();
+      else document.exitFullscreen && document.exitFullscreen();
+    }
+  });
+
+  window.acidAPI={next(){if(step>=4)return false;go(step+1,true);return true;},prev(){if(step<=0)return false;go(step-1,false);return true;},reset(){go(0,false);},last(){go(4,false);}};
+  render(0,false);
+})();
+</script>
+
+<div class="stage off" id="baseStage">
+  <header>
+    <div>
+      <h1>BASE — Le compteur de likes Instagram</h1>
+      <div class="sous">Bases de données avancées · L2 IDS · SupNum — Le modèle BASE</div>
+    </div>
+    <nav class="progress" id="bProgress"></nav>
+  </header>
+  <main>
+    <div class="col">
+      <div class="card props">
+        <div class="card-title" style="margin-bottom:2px">Les trois propriétés BASE</div>
+        <div class="prop" data-p="0"><div class="lt">BA</div><div><h4>Basically Available <i>— disponibilité de base</i></h4><p>Le système privilégie la disponibilité.</p></div></div>
+        <div class="prop" data-p="1"><div class="lt">S</div><div><h4>Soft State <i>— état souple</i></h4><p>L’état peut évoluer pendant la synchronisation.</p></div></div>
+        <div class="prop" data-p="2"><div class="lt">E</div><div><h4>Eventually Consistent <i>— cohérence à terme</i></h4><p>Les copies finissent par converger, sous les conditions appropriées.</p></div></div>
+        <div class="bnote"><b>Note :</b> BASE est une approche de conception des systèmes distribués, pas une propriété obligatoire de toutes les bases NoSQL. Elle n’est pas l’opposé strict d’ACID : beaucoup de systèmes combinent les deux selon les opérations.</div>
+      </div>
+    </div>
+    <div class="col">
+      <div class="servers">
+        <div class="card srv" id="srvA">
+          <div class="sh"><span class="ic"><svg width="26" height="26" viewBox="0 0 24 24" fill="none" stroke="#0E5C1B" stroke-width="2"><rect x="3" y="3" width="18" height="7" rx="2"/><rect x="3" y="14" width="18" height="7" rx="2"/><circle cx="7" cy="6.5" r="1" fill="#0E5C1B"/><circle cx="7" cy="17.5" r="1" fill="#0E5C1B"/></svg></span>Serveur A</div>
+          <div class="users"><span class="u">U1</span></div><div class="ans">réponse ✓</div>
+          <div class="cnt"><svg class="heart" viewBox="0 0 24 24"><path d="M12 21s-7.5-4.6-10-9.3C.4 8.4 2.2 4.5 6 4.1c2.2-.2 4 1 6 3.1 2-2.1 3.8-3.3 6-3.1 3.8.4 5.6 4.3 4 7.6C19.5 16.4 12 21 12 21z"/></svg><span class="n" id="nA">1 203</span><span class="lk">likes</span></div>
+          <span class="sync-st wait" id="stSA"><span class="d"></span><span class="t">Synchronisation en attente</span></span>
+        </div>
+        <div class="link" id="bLink">
+          <svg viewBox="0 0 150 150">
+            <path class="ln" d="M135 60 H15"/><path class="ah" d="M15 60 l14 -8 v16 z"/>
+            <path class="ln" d="M15 92 H135"/><path class="ah" d="M135 92 l-14 -8 v16 z"/>
+            <circle class="pkt" cx="123" cy="60" r="7" fill="#D9661F"/><circle class="pkt p2" cx="123" cy="60" r="7" fill="#D9661F"/>
+          </svg>
+          <div class="lab" id="bLinkLab">réplication</div>
+        </div>
+        <div class="card srv" id="srvB">
+          <div class="sh"><span class="ic"><svg width="26" height="26" viewBox="0 0 24 24" fill="none" stroke="#0E5C1B" stroke-width="2"><rect x="3" y="3" width="18" height="7" rx="2"/><rect x="3" y="14" width="18" height="7" rx="2"/><circle cx="7" cy="6.5" r="1" fill="#0E5C1B"/><circle cx="7" cy="17.5" r="1" fill="#0E5C1B"/></svg></span>Serveur B</div>
+          <div class="users"><span class="u">U2</span></div><div class="ans">réponse ✓</div>
+          <div class="cnt"><svg class="heart" viewBox="0 0 24 24"><path d="M12 21s-7.5-4.6-10-9.3C.4 8.4 2.2 4.5 6 4.1c2.2-.2 4 1 6 3.1 2-2.1 3.8-3.3 6-3.1 3.8.4 5.6 4.3 4 7.6C19.5 16.4 12 21 12 21z"/></svg><span class="n" id="nB">1 205</span><span class="lk">likes</span></div>
+          <span class="sync-st wait" id="stSB"><span class="d"></span><span class="t">Synchronisation en attente</span></span>
+        </div>
+      </div>
+      <div class="card bexplain fade" id="bExplain"></div>
+      <div class="card bquiz hidden" id="bQuiz">
+        <div class="q">Question : deux serveurs affichent temporairement des nombres de likes différents. Est-ce nécessairement une erreur ?</div>
+        <div class="bopts">
+          <button class="bopt" data-ok="0" data-why="Pas forcément : dans un système à cohérence éventuelle, un écart temporaire entre copies est prévu, le temps que les mises à jour se propagent.">Oui, c’est forcément une erreur : les deux serveurs devraient toujours afficher la même valeur.</button>
+          <button class="bopt" data-ok="1">Non, cela peut être normal dans un système à cohérence éventuelle.</button>
+          <button class="bopt" data-ok="0" data-why="Arrêter le service irait à l’encontre de la disponibilité recherchée : on préfère continuer à répondre, puis laisser les copies converger.">Oui, il faut arrêter le service jusqu’à ce que les serveurs soient d’accord.</button>
+        </div>
+        <div class="bfeed" id="bFeed"></div>
+      </div>
+    </div>
+  </main>
+  <footer>
+    <div class="tabs"><button class="tab" data-sim="acid">ACID — Virement bancaire</button><button class="tab" data-sim="base">BASE — Compteur de likes</button></div>
+    <div class="hint">Flèches ← → ou Espace · F : plein écran</div>
+    <div class="btns">
+      <button class="btn ghost" id="bRestart">↺ Recommencer</button>
+      <button class="btn sec" id="bPrev">← Précédent</button>
+      <button class="btn prim" id="bNext">Suivant →</button>
+    </div>
+  </footer>
+</div>
+
+<script>
+/* ================= Simulation BASE ================= */
+(function(){
+  "use strict";
+  const $=id=>document.getElementById(id);
+  const ST=[{lab:"BA"},{lab:"Soft State"},{lab:"Eventually"},{lab:"Question"}];
+  let step=0, synced=false, tok=0, timers=[];
+  const fmt=n=>n.toLocaleString("fr-FR").replace(/ | /g," ");
+  const prog=$("bProgress");
+  ST.forEach((s,i)=>{const d=document.createElement("div");d.className="pstep";d.innerHTML='<div class="dot">'+(i+1)+'</div><div class="lab">'+s.lab+'</div>';
+    d.addEventListener("click",()=>go(i));prog.appendChild(d);});
+  function later(f,ms){timers.push(setTimeout(f,ms));}
+  function setN(id,v){$(id).textContent=fmt(v);$(id).dataset.v=v;}
+  function animN(id,to,ms,cb){const from=+$(id).dataset.v,t0=performance.now(),k=++tok;
+    (function f(t){if(k!==tok)return;const p=Math.min(1,(t-t0)/ms);const v=Math.round(from+(to-from)*p);
+      if(String(v)!==$(id).dataset.v){setN(id,v);const h=$(id).parentNode.querySelector(".heart");h.classList.remove("beat");void h.getBoundingClientRect();h.classList.add("beat");}
+      if(p<1)requestAnimationFrame(f);else{setN(id,to);cb&&cb();}})(performance.now());}
+  function st(id,ok,txt){const e=$(id);e.className="sync-st "+(ok?"ok":"wait");e.querySelector(".t").textContent=txt;}
+  function link(mode,lab){const l=$("bLink");l.className="link"+(mode?" "+mode:"");$("bLinkLab").textContent=lab;}
+  function props(i){document.querySelectorAll(".prop").forEach(p=>{const k=+p.dataset.p;p.className="prop"+(k===i?" cur":(k<i||i>=3?" seen":""));});}
+  function users(on){document.querySelectorAll("#baseStage .u").forEach((u,k)=>{u.classList.remove("on");if(on)later(()=>u.classList.add("on"),200+k*250);});
+    document.querySelectorAll("#baseStage .ans").forEach((a,k)=>{a.classList.remove("on");if(on)later(()=>a.classList.add("on"),700+k*250);});}
+  function explain(html){const e=$("bExplain");e.classList.remove("hidden");e.className="card bexplain fade";void e.offsetWidth;e.innerHTML=html;}
+
+  function render(){
+    timers.forEach(clearTimeout);timers=[];tok++;
+    const A=$("srvA"),B=$("srvB");
+    $("bQuiz").classList.add("hidden");$("bExplain").classList.remove("hidden");
+    props(step); users(false);
+    A.className="card srv";B.className="card srv";
+    setN("nB",1205);
+    if(step===0){
+      synced=false; setN("nA",1203); A.classList.add("diff");
+      st("stSA",false,"Synchronisation en attente"); st("stSB",true,"À jour");
+      link("","réplication"); users(true);
+      explain('<h2>Étape 1 — Basically Available (BA)</h2>'+
+        '<p>Deux utilisateurs consultent la même photo, chacun sur un serveur différent. Les deux serveurs <b>répondent</b>, même si le serveur A n’a pas encore reçu les derniers « J’aime ».</p>'+
+        '<div class="msg">Le service reste disponible, même si certaines données affichées sont temporairement anciennes.</div>');
+    }
+    if(step===1){
+      synced=false; setN("nA",1203); A.classList.add("diff"); B.classList.add("diff");
+      st("stSA",false,"Mise à jour en cours de réception"); st("stSB",false,"Synchronisation en attente");
+      link("run","propagation des mises à jour");
+      explain('<h2>Étape 2 — Soft State (S)</h2>'+
+        '<p>Au même instant, le serveur A affiche <b>1 203</b> likes et le serveur B <b>1 205</b>. Les mises à jour circulent entre les serveurs.</p>'+
+        '<p>L’état du serveur A va changer <b>sans qu’aucun utilisateur n’agisse</b> : il suffit qu’il reçoive les mises à jour du serveur B.</p>'+
+        '<div class="msg w">Les données peuvent évoluer pendant la synchronisation.</div>');
+    }
+    if(step===2){
+      explain('<h2>Étape 3 — Eventually Consistent (E)</h2>'+
+        '<p>Si plus aucun « J’aime » n’arrive et que la synchronisation fonctionne, les deux copies finissent par afficher la même valeur.</p>'+
+        '<button class="syncbtn" id="syncBtn"><span class="sp">⟳</span><span class="lb">Synchroniser les serveurs</span></button>'+
+        '<div class="confirm" id="confirm"><span class="ck">✓</span>Les deux copies sont maintenant synchronisées.</div>'+
+        '<div class="msg" id="msgE" style="opacity:.0;transition:opacity .5s">Si les mises à jour cessent et que la synchronisation fonctionne, toutes les copies finissent par converger.</div>');
+      $("syncBtn").addEventListener("click",doSync);
+      if(synced) showSynced(false); else {
+        setN("nA",1203); A.classList.add("diff"); B.classList.add("diff");
+        st("stSA",false,"Synchronisation en attente"); st("stSB",false,"Synchronisation en attente"); link("","réplication");
+      }
+    }
+    if(step===3){
+      showSynced(false);
+      $("bExplain").classList.add("hidden"); $("bQuiz").classList.remove("hidden");
+      document.querySelectorAll(".bopt").forEach(b=>b.className="bopt"); $("bFeed").textContent=""; $("bFeed").className="bfeed";
+    }
+    [...prog.children].forEach((d,k)=>d.className="pstep"+(k<step?" done":"")+(k===step?" current":""));
+    $("bPrev").disabled=step===0; $("bNext").disabled=step===ST.length-1;
+  }
+  function showSynced(anim){
+    const A=$("srvA"),B=$("srvB"),btn=$("syncBtn");
+    A.className="card srv same";B.className="card srv same";
+    st("stSA",true,"Synchronisé");st("stSB",true,"Synchronisé");link("done","copies identiques");
+    setN("nA",1205);
+    if(btn){btn.className="syncbtn ok";btn.querySelector(".lb").textContent="Rejouer la synchronisation";}
+    const c=$("confirm"); if(c) c.classList.add("on"); const m=$("msgE"); if(m) m.style.opacity=1;
+  }
+  function doSync(){
+    const btn=$("syncBtn");
+    if(synced){ // rejouer
+      synced=false; tok++; setN("nA",1203);
+      $("srvA").className="card srv diff";$("srvB").className="card srv diff";
+      st("stSA",false,"Synchronisation en attente");st("stSB",false,"Synchronisation en attente");link("","réplication");
+      btn.className="syncbtn";btn.querySelector(".lb").textContent="Synchroniser les serveurs";
+      $("confirm").classList.remove("on");$("msgE").style.opacity=0; return;
+    }
+    btn.classList.add("busy");btn.querySelector(".lb").textContent="Synchronisation…";
+    st("stSA",false,"Réception des mises à jour…");st("stSB",false,"Envoi des mises à jour…");link("run","propagation des mises à jour");
+    later(()=>animN("nA",1205,1600,()=>{synced=true;btn.classList.remove("busy");showSynced(true);}),500);
+  }
+  document.querySelectorAll(".bopt").forEach(b=>b.addEventListener("click",()=>{
+    const f=$("bFeed");
+    if(b.dataset.ok==="1"){document.querySelectorAll(".bopt").forEach(o=>{if(o!==b)o.className="bopt";});b.className="bopt good";f.className="bfeed good";
+      f.textContent="Exactement ! Dans un système à cohérence éventuelle, un écart temporaire est normal : les copies convergent dès que les mises à jour se sont propagées.";}
+    else{b.className="bopt bad";f.className="bfeed bad";f.textContent="Pas tout à fait. "+b.dataset.why;}
+  }));
+  function go(i){if(i<0||i>=ST.length)return;step=i;render();}
+  $("bNext").addEventListener("click",()=>go(step+1));
+  $("bPrev").addEventListener("click",()=>go(step-1));
+  $("bRestart").addEventListener("click",()=>{synced=false;go(0);});
+  document.addEventListener("keydown",e=>{
+    if(window.SIM!=="base")return;
+    if(e.key==="ArrowRight"||e.key===" "||e.key==="PageDown"){e.preventDefault();go(step+1);}
+    else if(e.key==="ArrowLeft"||e.key==="PageUp"){e.preventDefault();go(step-1);}
+    else if(e.key==="Home"){synced=false;go(0);}
+  });
+  window.resetBase=()=>{synced=false;go(0);};
+  window.baseAPI={next(){if(step>=ST.length-1)return false;go(step+1);return true;},prev(){if(step<=0)return false;go(step-1);return true;},reset(){synced=false;go(0);},last(){synced=true;go(ST.length-1);}};
+  render();
+})();
+
+/* ================= Onglets et mise à l'échelle ================= */
+(function(){
+  window.SIM="acid";
+  function fitAll(){const s=Math.min(innerWidth/1600,innerHeight/900);document.querySelectorAll(".stage").forEach(st=>st.style.transform="translate(-50%,-50%) scale("+s+")");}
+  addEventListener("resize",fitAll);fitAll();
+  function show(sim){window.SIM=sim;
+    document.getElementById("stage").classList.toggle("off",sim!=="acid");
+    document.getElementById("baseStage").classList.toggle("off",sim!=="base");
+    document.querySelectorAll(".tab").forEach(t=>t.classList.toggle("on",t.dataset.sim===sim));}
+  document.querySelectorAll(".tab").forEach(t=>t.addEventListener("click",()=>show(t.dataset.sim)));
+  document.addEventListener("keydown",e=>{
+    if(e.key==="f"||e.key==="F"){ if(window.SIM==="base"){ if(!document.fullscreenElement) document.documentElement.requestFullscreen&&document.documentElement.requestFullscreen(); else document.exitFullscreen&&document.exitFullscreen(); } }
+    if(window.EMBED) return;
+    if(e.key==="1") show("acid"); if(e.key==="2") show("base");
+  });
+  if(window.EMBED){
+    show(window.EMBED);
+    document.querySelectorAll(".hint").forEach(t=>t.style.display="none");
+    document.querySelectorAll(".tabs").forEach(t=>{const d=document.createElement("div");d.className="brand";d.textContent="SupNum · BD avancées · L2 IDS";t.replaceWith(d);});
+  } else show("acid");
+})();
+</script>
+</body>
+</html>

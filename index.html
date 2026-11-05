@@ -1,0 +1,54 @@
+<!doctype html>
+<html lang="fr">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Bases de données avancées · L2 IDS · SupNum</title>
+<meta name="description" content="Cours interactif de bases de données avancées (NoSQL, MongoDB, indexation) — L2 IDS, SupNum.">
+<meta name="theme-color" content="#0E5C1B">
+<link rel="icon" href="data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 32 32'%3E%3Crect width='32' height='32' rx='7' fill='%230E5C1B'/%3E%3Cellipse cx='16' cy='9' rx='9' ry='3.5' fill='none' stroke='white' stroke-width='2.2'/%3E%3Cpath d='M7 9v14c0 2 4 3.5 9 3.5s9-1.5 9-3.5V9M7 16c0 2 4 3.5 9 3.5s9-1.5 9-3.5' fill='none' stroke='white' stroke-width='2.2'/%3E%3C/svg%3E">
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&family=JetBrains+Mono:wght@400;600;700&family=Plus+Jakarta+Sans:wght@600;700;800&display=swap" rel="stylesheet">
+<link rel="stylesheet" href="assets/css/style.css">
+</head>
+<body>
+<a class="skip" href="#main">Aller au contenu</a>
+
+<header class="site-header">
+  <button id="nav-toggle" class="icon-btn only-mobile" type="button" aria-label="Ouvrir le plan"></button>
+  <a class="brand" href="#plan"><span class="brand-mark">SupNum</span><span id="brand-title"></span><span id="brand-sub" class="brand-sub"></span></a>
+  <nav class="header-nav">
+    <a href="#plan">Plan</a>
+    <a href="#glossaire">Glossaire</a>
+    <button id="theme" class="icon-btn" type="button" aria-label="Changer de thème"></button>
+  </nav>
+  <div id="readbar"><i></i></div>
+</header>
+
+<div id="scrim"></div>
+<aside id="sidebar" class="sidebar" aria-label="Plan du cours">
+  <div class="sb-top"><b>Plan du cours</b><button id="nav-close" class="icon-btn only-mobile" type="button" aria-label="Fermer"></button></div>
+  <nav id="sidebar-nav"></nav>
+  <div class="sb-links"><a href="#plan">Vue d'ensemble du cours</a><a href="#glossaire">Glossaire</a></div>
+</aside>
+
+<main id="main" tabindex="-1"></main>
+<footer class="footer" id="foot"></footer>
+
+<!-- Mode Présenter -->
+<div id="present" hidden tabindex="-1" role="dialog" aria-label="Mode présentation">
+  <div class="pr-top"><span id="pr-title"></span><span class="pr-r"><button id="pr-full" class="icon-btn" type="button" title="Plein écran (F)"></button><button id="pr-close" class="btn small" type="button"></button></span></div>
+  <div id="pr-stage"></div>
+  <div class="pr-bottom">
+    <span id="pr-count"></span>
+    <span class="pr-help">→ suivant · ← précédent · F plein écran · B écran noir</span>
+    <span><button id="pr-prev" class="btn" type="button">← Précédente</button> <button id="pr-next" class="btn primary" type="button">Suivante →</button></span>
+  </div>
+  <div id="pr-bar"><i></i></div>
+</div>
+
+<script src="assets/js/content.js"></script>
+<script src="assets/js/app.js"></script>
+</body>
+</html>
