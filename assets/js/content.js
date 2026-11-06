@@ -32,7 +32,7 @@ window.COURSE = {
       {
        "type": "notion",
        "titre": "Vue d'ensemble du module",
-       "html": "\n        <ol class=\"big-list\">\n          <li class=\"step\"><strong>Chapitre 1</strong> · Les origines du NoSQL</li>\n          <li class=\"step\"><strong>Chapitre 2</strong> · Distribuer les données à l'échelle</li>\n          <li class=\"step\"><strong>Chapitre 3</strong> · Choisir sa base de données NoSQL</li>\n          <li class=\"step\"><strong>Chapitre 4</strong> · Découvrir le fonctionnement de MongoDB</li>\n          <li class=\"step\"><strong>Chapitre 5</strong> · Interroger MongoDB et indexer les données</li>\n        </ol>"
+       "html": "\n        <ol class=\"big-list\">\n          <li class=\"step\"><strong>Chapitre 1</strong> · Les origines du NoSQL</li>\n          <li class=\"step\"><strong>Chapitre 2</strong> · Modélisation avec MongoDB</li>\n          <li class=\"step\"><strong>Chapitre 3</strong> · Requêtes et agrégations</li>\n          <li class=\"step\"><strong>Chapitre 4</strong> · Indexation et optimisation</li>\n        </ol>"
       },
       {
        "type": "question",
@@ -178,26 +178,26 @@ window.COURSE = {
    ]
   },
   {
-   "id": "distribuer",
+   "id": "modelisation",
    "num": "02",
-   "titre": "Distribuer les données et choisir sa base",
-   "resume": "Réplication, partitionnement (sharding), passage à l'échelle horizontal, puis critères de choix entre les familles NoSQL.",
-   "statut": "bientot",
-   "parties": []
-  },
-  {
-   "id": "mongodb",
-   "num": "03",
-   "titre": "MongoDB : documents, CRUD et modélisation",
-   "resume": "Documents et collections, MongoDB Compass et Atlas, opérations CRUD, puis imbriquer ou référencer.",
+   "titre": "Modélisation avec MongoDB",
+   "resume": "Documents et collections, imbrication vs référencement, et opérations CRUD essentielles.",
    "statut": "bientot",
    "parties": []
   },
   {
    "id": "requetes",
+   "num": "03",
+   "titre": "Requêtes et agrégations",
+   "resume": "Filtres avancés, opérateurs sur les tableaux, pipelines d'agrégation et $lookup.",
+   "statut": "bientot",
+   "parties": []
+  },
+  {
+   "id": "indexation",
    "num": "04",
-   "titre": "Interroger, agréger et indexer",
-   "resume": "Requêtes find, pipeline d'agrégation, index et lecture d'un plan d'exécution avec explain().",
+   "titre": "Indexation et optimisation",
+   "resume": "Index simples, composés et multikey, explain() et optimisation des requêtes.",
    "statut": "bientot",
    "parties": []
   }
