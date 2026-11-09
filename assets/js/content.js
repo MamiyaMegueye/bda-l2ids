@@ -179,61 +179,21 @@ window.COURSE = {
     },
     {
      "id": "familles",
+     "verrou": true,
      "titre": "Les familles de bases NoSQL",
-     "duree": 20,
-     "accroche": "Quatre grandes familles, chacune optimisée pour un type de données et de requêtes.",
-     "retenir": "Colonnes larges pour les séries temporelles, clé-valeur pour le cache ultra-rapide, documents pour les structures flexibles, graphes pour les relations en cascade.",
-     "diapos": [
-      {
-       "type": "notion",
-       "titre": "Quatre familles, quatre philosophies",
-       "html": "\n        <div class=\"cols\">\n          <div class=\"c2\">\n            <div class=\"card frag zoom\" style=\"border-left:4px solid var(--vert)\">\n              <h3 style=\"margin:0;color:var(--vert)\">A. Colonnes larges</h3>\n              <p style=\"margin:4px 0 0\">Cassandra · HBase · BigTable</p>\n            </div>\n            <div class=\"card frag zoom\" style=\"border-left:4px solid var(--or)\">\n              <h3 style=\"margin:0;color:var(--or)\">B. Clé-valeur</h3>\n              <p style=\"margin:4px 0 0\">Redis · DynamoDB · Memcached</p>\n            </div>\n          </div>\n          <div class=\"c2\">\n            <div class=\"card frag zoom\" style=\"border-left:4px solid var(--bleu)\">\n              <h3 style=\"margin:0;color:var(--bleu)\">C. Documents</h3>\n              <p style=\"margin:4px 0 0\">MongoDB · CouchDB · Firestore</p>\n            </div>\n            <div class=\"card frag zoom\" style=\"border-left:4px solid #8e44ad\">\n              <h3 style=\"margin:0;color:#8e44ad\">D. Graphes</h3>\n              <p style=\"margin:4px 0 0\">Neo4j · Amazon Neptune · ArangoDB</p>\n            </div>\n          </div>\n        </div>\n        <div class=\"q step\"><span class=\"q-num\">Question 11</span>Rappelez-vous l'exercice « Et si notre application grandissait ? ». Pour chacun des quatre besoins, quelle famille choisiriez-vous ?</div>"
-      },
-      {
-       "type": "notion",
-       "titre": "A. Colonnes larges — Principe",
-       "html": "\n        <div class=\"block\"><div class=\"bt\">Origine</div><div class=\"bb\">Google <strong>BigTable</strong> (2006), puis Apache <strong>Cassandra</strong> (Facebook, 2008) et Apache <strong>HBase</strong>.</div></div>\n        <div class=\"block frag zoom\"><div class=\"bt\">Principe</div><div class=\"bb\">\n          Les données sont organisées par <strong>clé de partition</strong> et <strong>clé de tri</strong>. Toutes les lignes d'une même partition sont stockées <strong>physiquement ensemble</strong> sur le même nœud → lecture ultra-rapide d'une plage.\n        </div></div>\n        <div class=\"block frag zoom\"><div class=\"bt\">Cas d'usage</div><div class=\"bb\">\n          Données chronologiques massives : capteurs IoT, logs, métriques, historiques de prix.\n        </div></div>\n        <div class=\"callout warn step\"><b>Attention</b> « Colonnes larges » ≠ « base colonnaire analytique ». Cassandra stocke les données par <strong>partition (lignes groupées)</strong>, tandis qu'un moteur analytique comme ClickHouse stocke chaque <strong>colonne séparément</strong> pour les agrégations.</div>"
-      },
-      {
-       "type": "demo",
-       "titre": "A. Colonnes larges — Démo capteurs",
-       "html": "\n        <p>Table <code>mesures</code> avec clé de partition <code>(capteur_id)</code> et clé de tri <code>date_mesure</code>.</p>\n        <pre><code class=\"sql\">CREATE TABLE mesures (\n  capteur_id   text,\n  date_mesure  timestamp,\n  temperature  float,\n  humidite     float,\n  PRIMARY KEY ((capteur_id), date_mesure)\n);</code></pre>\n        <p class=\"step\"><strong>Clé de partition</strong> <code>(capteur_id)</code> : détermine <strong>sur quel nœud</strong> les données sont stockées. Toutes les mesures d'un capteur sont regroupées physiquement.</p>\n        <p class=\"step\">Requête CQL : <code>SELECT * FROM mesures WHERE capteur_id = 'capteur_12';</code> → Cassandra lit <strong>une seule partition</strong> sur le disque.</p>"
-      },
-      {
-       "type": "notion",
-       "titre": "B. Clé-valeur — Redis",
-       "html": "\n        <div class=\"block\"><div class=\"bt\">Principe</div><div class=\"bb\">\n          Comme un <strong>dictionnaire</strong> : une clé → une valeur. Accès en <strong>O(1)</strong>. Pas de requêtes complexes, pas de schéma, ultra-rapide.\n        </div></div>\n        <div class=\"block frag zoom\"><div class=\"bt\">Base de données en mémoire</div><div class=\"bb\">\n          <p>Exemples de paires clé → valeur :</p>\n          <ul>\n            <li><code>session:8f3a</code> → <code>{user: 42, panier: 3}</code> (TTL 1800s)</li>\n            <li><code>user:42:nom</code> → <code>\"Ahmed\"</code></li>\n            <li><code>compteur:vues</code> → <code>1547</code></li>\n          </ul>\n        </div></div>\n        <div class=\"block frag zoom\"><div class=\"bt\">Commandes Redis</div><div class=\"bb\">\n          <code>SET session:8f3a \"{user: 42, panier: 3}\" EX 1800</code> → OK<br>\n          <code>GET session:8f3a</code> → la valeur associée\n        </div></div>"
-      },
-      {
-       "type": "notion",
-       "titre": "C. Documents — MongoDB",
-       "html": "\n        <div class=\"block frag zoom\"><div class=\"bt\">Principe</div><div class=\"bb\">\n          Chaque enregistrement est un <strong>document</strong> (JSON/BSON) avec une structure <strong>flexible</strong>. Pas de schéma fixe : chaque document peut avoir des champs différents. Regroupés en <strong>collections</strong>.\n        </div></div>\n        <div class=\"cols frag zoom\">\n          <div>\n            <div class=\"col-t\">MySQL — Table <code>etudiants</code></div>\n            <p>Schéma rigide : toutes les lignes ont les mêmes colonnes (id, nom, filiere, moyenne).</p>\n          </div>\n          <div>\n            <div class=\"col-t\">MongoDB — Collection <code>etudiants</code></div>\n            <pre><code class=\"json\">{\n  \"_id\": ObjectId(\"...\"),\n  \"nom\": \"Ahmed\",\n  \"filiere\": \"IDS\",\n  \"moyenne\": 14.5,\n  \"hobbies\": [\"football\", \"lecture\"]\n}</code></pre>\n            <p>Schéma flexible : Ahmed a « hobbies », pas forcément Fatima.</p>\n          </div>\n        </div>"
-      },
-      {
-       "type": "notion",
-       "titre": "C. MongoDB — Caractéristiques clés",
-       "html": "\n        <div class=\"cols\">\n          <div class=\"c2\">\n            <div class=\"card frag zoom\" style=\"border-left:4px solid var(--vert)\"><h3 style=\"margin:0;color:var(--vert)\">Schéma flexible</h3><p style=\"margin:6px 0 0\">Pas de <code>ALTER TABLE</code>. Chaque document peut avoir une structure différente dans la même collection.</p></div>\n            <div class=\"card frag zoom\" style=\"border-left:4px solid var(--bleu)\"><h3 style=\"margin:0;color:var(--bleu)\">Identifiant unique <code>_id</code></h3><p style=\"margin:6px 0 0\">Chaque document a un champ <code>_id</code> (ObjectId par défaut, 12 octets). Pas besoin de séquence.</p></div>\n            <div class=\"card frag zoom\" style=\"border-left:4px solid var(--or)\"><h3 style=\"margin:0;color:var(--or)\">BSON : Binary JSON</h3><p style=\"margin:6px 0 0\">Format binaire compact. Supporte Date, Decimal128, ObjectId, tableaux et sous-documents imbriqués.</p></div>\n          </div>\n          <div class=\"c2\">\n            <div class=\"card frag zoom\" style=\"border-left:4px solid #27ae60\"><h3 style=\"margin:0;color:#27ae60\">Transactions ACID (depuis 4.0)</h3><p style=\"margin:6px 0 0\">Depuis MongoDB <strong>4.0 (2018)</strong>, support des transactions multi-documents ACID au sein d'un replica set.</p></div>\n            <div class=\"card frag zoom\" style=\"border-left:4px solid #8e44ad\"><h3 style=\"margin:0;color:#8e44ad\">Replica Set</h3><p style=\"margin:6px 0 0\">Réplication automatique : un <strong>primaire</strong> et des <strong>secondaires</strong>. Basculement automatique en cas de panne.</p></div>\n            <div class=\"card frag zoom\" style=\"border-left:4px solid #c0392b\"><h3 style=\"margin:0;color:#c0392b\">Sharding</h3><p style=\"margin:6px 0 0\">Distribution des données sur plusieurs serveurs selon une <strong>clé de sharding</strong>. Scalabilité horizontale.</p></div>\n          </div>\n        </div>"
-      },
-      {
-       "type": "notion",
-       "titre": "D. Graphes — Neo4j",
-       "html": "\n        <div class=\"block frag zoom\"><div class=\"bt\">Principe</div><div class=\"bb\">\n          Les données sont modélisées comme des <strong>nœuds</strong> (entités) et des <strong>relations</strong> (arêtes) avec des propriétés. Optimisé pour les requêtes de <strong>traversée</strong> : ami d'ami, chemin le plus court, recommandations.\n        </div></div>\n        <div class=\"block frag zoom\"><div class=\"bt\">Langage Cypher</div><div class=\"bb\">\n          <pre><code class=\"cypher\">MATCH (moi:Personne {nom: \"Ahmed\"})\n      -[:AMI_DE]->(ami:Personne)\n      -[:AMI_DE]->(suggestion)\nWHERE NOT (moi)-[:AMI_DE]->(suggestion)\nRETURN suggestion.nom</code></pre>\n          <p>→ « Amis de mes amis que je ne connais pas encore » — recommandation en 1 requête !</p>\n        </div></div>"
-      }
-     ]
+     "duree": 15,
+     "accroche": "",
+     "retenir": "",
+     "diapos": []
     },
     {
      "id": "synthese",
+     "verrou": true,
      "titre": "Synthèse et auto-évaluation",
-     "duree": 10,
-     "accroche": "Le résumé des cinq idées clés du chapitre, suivi d'un quiz d'auto-évaluation.",
-     "retenir": "Le choix SQL vs NoSQL dépend du besoin métier, pas d'une mode technologique.",
-     "diapos": [
-      {
-       "type": "retenir",
-       "titre": "En résumé",
-       "html": "\n        <ol>\n          <li class=\"step\"><strong>1.</strong> Les SGBDR atteignent leurs <strong>limites</strong> face au volume, à la variété et à la vélocité des données modernes.</li>\n          <li class=\"step\"><strong>2.</strong> Le modèle <strong>ACID</strong> garantit la fiabilité (transactions bancaires), tandis que <strong>BASE</strong> favorise la disponibilité et la performance (réseaux sociaux, IoT).</li>\n          <li class=\"step\"><strong>3.</strong> Le théorème <strong>CAP</strong> impose un choix entre <strong>cohérence</strong> et <strong>disponibilité</strong> lors d'une partition réseau. P n'est pas optionnel.</li>\n          <li class=\"step\"><strong>4.</strong> Il existe <strong>quatre grandes familles</strong> NoSQL, chacune optimisée pour un type de données et de requêtes spécifique.</li>\n          <li class=\"step\"><strong>5.</strong> Le choix SQL vs NoSQL (et la famille NoSQL) dépend du <strong>besoin métier</strong>, pas d'une mode technologique.</li>\n        </ol>"
-      }
-     ]
+     "duree": 5,
+     "accroche": "",
+     "retenir": "",
+     "diapos": []
     }
    ]
   },
@@ -262,48 +222,20 @@ window.COURSE = {
    "parties": []
   }
  ],
- "vraiFaux": [
-  {"enonce": "Les bases NoSQL remplacent complètement les bases relationnelles.", "reponse": false, "explication": "NoSQL complète le relationnel, il ne le remplace pas. Les deux coexistent selon les besoins."},
-  {"enonce": "Le « C » de CAP (linéarisabilité) est différent du « C » de ACID (intégrité des contraintes).", "reponse": true, "explication": "CAP-C = tous les nœuds voient la même donnée au même moment. ACID-C = la base passe d'un état valide à un autre."},
-  {"enonce": "MongoDB ne supporte pas les transactions ACID.", "reponse": false, "explication": "Depuis MongoDB 4.0 (2018), les transactions multi-documents ACID sont supportées."},
-  {"enonce": "Redis stocke les données en mémoire RAM pour un accès ultra-rapide.", "reponse": true, "explication": "Redis est une base clé-valeur en mémoire (in-memory), d'où sa rapidité en O(1)."},
-  {"enonce": "Dans le théorème CAP, on peut choisir d'ignorer la tolérance au partitionnement.", "reponse": false, "explication": "P n'est pas optionnel : les pannes réseau sont inévitables en système distribué. Le vrai choix est CP ou AP."},
-  {"enonce": "Neo4j utilise le langage Cypher pour interroger les graphes.", "reponse": true, "explication": "Cypher est le langage de requête déclaratif de Neo4j, conçu pour exprimer naturellement les parcours de graphes."}
- ],
- "familles": {
-  "options": ["Colonnes larges", "Clé-valeur", "Documents", "Graphes"],
-  "besoins": [
-   {"enonce": "Stocker des sessions utilisateur avec expiration automatique.", "reponse": "Clé-valeur", "explication": "Redis avec TTL : une clé = un identifiant de session, accès en O(1), expiration automatique."},
-   {"enonce": "Enregistrer des mesures de capteurs IoT horodatées, requêtes par capteur et plage de dates.", "reponse": "Colonnes larges", "explication": "Cassandra/HBase : clé de partition par capteur, clé de tri par date, écritures massives."},
-   {"enonce": "Gérer un catalogue de produits où chaque produit a des attributs différents.", "reponse": "Documents", "explication": "MongoDB : chaque document a un schéma flexible, idéal pour les produits aux attributs variés."},
-   {"enonce": "Recommander des amis d'amis dans un réseau social.", "reponse": "Graphes", "explication": "Neo4j : les relations (arêtes) sont des citoyens de première classe, traversée en une requête Cypher."},
-   {"enonce": "Effectuer des virements bancaires entre comptes avec garantie de cohérence stricte.", "reponse": "SGBDR/ACID", "explication": "Les virements nécessitent des transactions ACID strictes : un SGBDR classique reste le meilleur choix."}
-  ]
- },
+ "vraiFaux": [],
+ "familles": {},
  "glossaire": [
   [
    "ACID",
    "Atomicité, Cohérence, Isolation, Durabilité : les quatre garanties d'une transaction fiable."
   ],
   [
-   "BSON",
-   "Binary JSON : format binaire compact utilisé par MongoDB, supportant des types riches (Date, Decimal128, ObjectId, sous-documents)."
-  ],
-  [
    "CAP (théorème)",
    "Conjecture de Brewer (2000) : un système distribué ne peut garantir simultanément Cohérence, Disponibilité et Tolérance au partitionnement. Le choix se fait entre CP et AP."
   ],
   [
-   "Cassandra",
-   "Base NoSQL à colonnes larges créée par Facebook (2008), conçue pour les écritures massives et la haute disponibilité (AP)."
-  ],
-  [
    "Clé de partition",
    "Détermine sur quel nœud les données sont stockées dans une base à colonnes larges (Cassandra, HBase)."
-  ],
-  [
-   "Cypher",
-   "Langage de requête déclaratif de Neo4j, conçu pour exprimer naturellement les parcours et traversées de graphes."
   ],
   [
    "Atomicité",
@@ -350,24 +282,12 @@ window.COURSE = {
    "Not Only SQL : bases de données non relationnelles conçues pour la gestion de données à grande échelle."
   ],
   [
-   "Redis",
-   "Base NoSQL clé-valeur en mémoire (RAM), accès en O(1). Utilisée pour le cache, les sessions et les compteurs."
-  ],
-  [
-   "Replica Set",
-   "Groupe de serveurs MongoDB qui maintiennent les mêmes données : un primaire (lectures/écritures) et des secondaires (répliques). Basculement automatique."
-  ],
-  [
    "Réplication",
    "Copie des mêmes données sur plusieurs serveurs. Synchrone : copies à jour avant confirmation ; asynchrone : à jour à terme."
   ],
   [
    "Schéma",
    "Structure des données (tables, colonnes, types), définie à l'avance dans une base relationnelle."
-  ],
-  [
-   "Sharding",
-   "Distribution des données sur plusieurs serveurs selon une clé de sharding. Permet la scalabilité horizontale."
   ],
   [
    "Transaction",
