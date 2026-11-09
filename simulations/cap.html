@@ -1,0 +1,348 @@
+<!DOCTYPE html>
+<html lang="fr">
+<head>
+<script>window.EMBED="cap";</script>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Simulation CAP — Billetterie de concert</title>
+<style>
+  :root{
+    --vert:#0E5C1B; --vert-2:#1E7A30; --vert-clair:#5E8F4E; --vert-pale:#EAF1E6;
+    --orange:#D9661F; --orange-pale:#FBEBDD; --rouge:#B23A1E;
+    --bleu:#1F4E9C; --bleu-pale:#E7EEF9;
+    --gris:#F2F2F2; --gris-2:#E3E6E4; --texte:#1D2A22; --texte-2:#4A5A50;
+    --blanc:#FFFFFF; --code-bg:#0F2417; --code-txt:#E8F2EA;
+    --serif:"Palatino Linotype","Book Antiqua",Palatino,Georgia,serif;
+    --sans:"Segoe UI",system-ui,-apple-system,Roboto,"Helvetica Neue",Arial,sans-serif;
+    --mono:"Cascadia Code","Cascadia Mono",Consolas,Menlo,monospace;
+  }
+  *{box-sizing:border-box;margin:0;padding:0}
+  html,body{height:100%;background:#1B2A20;overflow:hidden;font-family:var(--sans);color:var(--texte)}
+  .stage{position:absolute;left:50%;top:50%;width:1600px;height:900px;transform-origin:center center;
+    background:var(--blanc);display:grid;grid-template-rows:100px 1fr 72px;overflow:hidden;
+    box-shadow:0 20px 60px rgba(0,0,0,.35)}
+
+  header{background:var(--vert);color:#fff;display:flex;align-items:center;justify-content:space-between;padding:0 48px}
+  header h1{font-family:var(--serif);font-weight:400;font-size:36px}
+  header .badge{font-size:15px;background:rgba(255,255,255,.18);padding:6px 16px;border-radius:999px}
+
+  main{display:grid;grid-template-columns:1fr 420px;gap:32px;padding:24px 40px 16px;min-height:0;overflow:hidden}
+
+  footer{background:var(--vert);color:rgba(255,255,255,.7);display:flex;align-items:center;justify-content:space-between;padding:0 48px;font-size:15px}
+  footer b{color:#fff}
+
+  /* SVG scene */
+  .scene{position:relative;display:flex;align-items:center;justify-content:center}
+  .scene svg{width:100%;height:100%}
+
+  /* Panel */
+  .panel{display:flex;flex-direction:column;gap:14px;overflow-y:auto}
+  .card{background:var(--blanc);border:1px solid var(--gris-2);border-radius:16px;padding:20px;box-shadow:0 4px 14px rgba(14,92,27,.08)}
+  .card h3{font-size:16px;font-weight:700;color:var(--vert);text-transform:uppercase;letter-spacing:1px;margin-bottom:10px}
+
+  .msg{font-size:17px;line-height:1.5;min-height:60px}
+  .msg b{color:var(--vert)}
+  .msg .warn{color:var(--orange);font-weight:700}
+  .msg .err{color:var(--rouge);font-weight:700}
+
+  /* Buttons */
+  .actions{display:flex;gap:10px;flex-wrap:wrap}
+  .btn{padding:10px 22px;font-size:16px;font-weight:700;border:2px solid;border-radius:10px;cursor:pointer;
+    font-family:var(--sans);transition:all .25s}
+  .btn:hover{transform:translateY(-1px);box-shadow:0 4px 12px rgba(0,0,0,.12)}
+  .btn:disabled{opacity:.4;cursor:not-allowed;transform:none;box-shadow:none}
+  .btn-vert{border-color:var(--vert);background:var(--vert);color:#fff}
+  .btn-orange{border-color:var(--orange);background:var(--orange);color:#fff}
+  .btn-bleu{border-color:var(--bleu);background:var(--bleu);color:#fff}
+  .btn-outline{border-color:var(--vert-clair);background:var(--blanc);color:var(--vert)}
+  .btn-rouge{border-color:var(--rouge);background:var(--rouge);color:#fff}
+
+  .legend{font-size:14px;color:var(--texte-2);line-height:1.6}
+  .legend b{color:var(--texte)}
+
+  /* Steps indicator */
+  .steps{display:flex;gap:6px;margin-top:4px}
+  .steps .dot{width:28px;height:28px;border-radius:50%;border:2px solid var(--gris-2);display:grid;place-items:center;
+    font-size:13px;font-weight:700;color:var(--texte-2);transition:all .3s}
+  .steps .dot.done{background:var(--vert);border-color:var(--vert);color:#fff}
+  .steps .dot.current{background:var(--orange);border-color:var(--orange);color:#fff;transform:scale(1.1)}
+</style>
+</head>
+<body>
+<div class="stage" id="stage">
+  <header>
+    <div><h1>Simulation CAP — Billetterie de concert</h1></div>
+    <div class="badge">Théorème de Brewer (2000)</div>
+  </header>
+
+  <main>
+    <div class="scene">
+      <svg id="capSvg" viewBox="0 0 720 620"></svg>
+    </div>
+    <div class="panel">
+      <div class="card">
+        <h3>Étapes</h3>
+        <div class="steps" id="stepDots"></div>
+      </div>
+      <div class="card">
+        <h3>Situation</h3>
+        <div class="msg" id="msg">
+          Deux serveurs (<b>Paris</b> et <b>Nouakchott</b>) gèrent la même billetterie.<br>
+          Il reste <b>1 seule place</b> pour le concert.<br><br>
+          Cliquez <b>Démarrer</b> pour lancer le scénario.
+        </div>
+      </div>
+      <div class="card">
+        <h3>Actions</h3>
+        <div class="actions" id="actions">
+          <button class="btn btn-vert" onclick="sim.start()">▶ Démarrer</button>
+        </div>
+      </div>
+      <div class="card">
+        <h3>Légende</h3>
+        <div class="legend">
+          <b>C</b> = Cohérence (même donnée partout)<br>
+          <b>A</b> = Disponibilité (toujours une réponse)<br>
+          <b>P</b> = Tolérance au partitionnement (réseau coupé)<br><br>
+          <b>CP</b> : on refuse de répondre plutôt que de donner une donnée fausse.<br>
+          <b>AP</b> : on continue de répondre, quitte à vendre deux fois la même place.
+        </div>
+      </div>
+    </div>
+  </main>
+
+  <footer>
+    <span>SupNum · BD avancées · L2 IDS</span>
+    <span><b>Théorème CAP</b></span>
+  </footer>
+</div>
+
+<script>
+/* ── Mise à l’échelle 16:9 ── */
+function scaleStage(){
+  const s=document.getElementById('stage'),
+        w=window.innerWidth, h=window.innerHeight,
+        sc=Math.min(w/1600, h/900);
+  s.style.transform=`translate(-50%,-50%) scale(${sc})`;
+}
+window.addEventListener('resize',scaleStage); scaleStage();
+
+/* ── SVG Scene ── */
+const svg=document.getElementById('capSvg');
+const NS='http://www.w3.org/2000/svg';
+
+function el(tag,attrs,parent){
+  const e=document.createElementNS(NS,tag);
+  for(const[k,v]of Object.entries(attrs||{})) e.setAttribute(k,v);
+  if(parent) parent.appendChild(e);
+  return e;
+}
+function txt(parent,x,y,text,opts={}){
+  const t=el('text',{x,y,'font-family':'"Segoe UI",sans-serif','font-size':opts.size||'16','fill':opts.fill||'#1D2A22','text-anchor':opts.anchor||'middle','font-weight':opts.bold?'700':'400','dominant-baseline':'central'},parent);
+  t.textContent=text;
+  return t;
+}
+
+/* Servers */
+function drawServer(g,x,y,label,city){
+  const grp=el('g',{transform:`translate(${x},${y})`},g);
+  el('rect',{x:-80,y:-60,width:160,height:120,rx:16,fill:'#EAF1E6',stroke:'#0E5C1B','stroke-width':2},grp);
+  el('rect',{x:-60,y:-40,width:120,height:50,rx:8,fill:'#0F2417'},grp);
+  txt(grp,0,-15,'🖥️ Serveur',{size:'14',fill:'#8FC79A'});
+  txt(grp,0,40,label,{size:'20',fill:'#0E5C1B',bold:true});
+  txt(grp,0,60,city,{size:'14',fill:'#55625A'});
+  return grp;
+}
+
+/* Network link */
+let linkLine, linkLabel;
+function drawLink(g){
+  linkLine=el('line',{x1:180,y1:180,x2:540,y2:180,stroke:'#0E5C1B','stroke-width':4,'stroke-dasharray':'12 6'},g);
+  linkLabel=el('g',{transform:'translate(360,160)'},g);
+  el('rect',{x:-60,y:-14,width:120,height:28,rx:14,fill:'#EAF1E6',stroke:'#0E5C1B','stroke-width':1.5},linkLabel);
+  txt(linkLabel,0,0,'Réseau OK',{size:'13',fill:'#0E5C1B',bold:true});
+}
+
+/* Ticket count */
+let ticketParis, ticketNkc;
+function drawTickets(g){
+  const gp=el('g',{transform:'translate(180,300)'},g);
+  el('rect',{x:-70,y:-30,width:140,height:60,rx:12,fill:'#E7EEF9',stroke:'#1F4E9C','stroke-width':2},gp);
+  ticketParis=txt(gp,0,0,'Places : 1',{size:'22',fill:'#1F4E9C',bold:true});
+
+  const gn=el('g',{transform:'translate(540,300)'},g);
+  el('rect',{x:-70,y:-30,width:140,height:60,rx:12,fill:'#E7EEF9',stroke:'#1F4E9C','stroke-width':2},gn);
+  ticketNkc=txt(gn,0,0,'Places : 1',{size:'22',fill:'#1F4E9C',bold:true});
+}
+
+/* Users */
+let userFatima, userAhmed;
+function drawUsers(g){
+  userFatima=el('g',{transform:'translate(180,460)'},g);
+  el('circle',{cx:0,cy:0,r:36,fill:'#FBEBDD',stroke:'#D9661F','stroke-width':2},userFatima);
+  txt(userFatima,0,-6,'👩',{size:'28'});
+  txt(userFatima,0,52,'Fatima',{size:'18',fill:'#D9661F',bold:true});
+  txt(userFatima,0,72,'(Paris)',{size:'14',fill:'#55625A'});
+
+  userAhmed=el('g',{transform:'translate(540,460)'},g);
+  el('circle',{cx:0,cy:0,r:36,fill:'#E7EEF9',stroke:'#1F4E9C','stroke-width':2},userAhmed);
+  txt(userAhmed,0,-6,'👨',{size:'28'});
+  txt(userAhmed,0,52,'Ahmed',{size:'18',fill:'#1F4E9C',bold:true});
+  txt(userAhmed,0,72,'(Nouakchott)',{size:'14',fill:'#55625A'});
+}
+
+/* Draw arrows */
+let arrowFatima, arrowAhmed;
+function drawArrows(g){
+  arrowFatima=el('line',{x1:180,y1:420,x2:180,y2:340,stroke:'#D9661F','stroke-width':3,opacity:0,'marker-end':'url(#arrowOr)'},g);
+  arrowAhmed=el('line',{x1:540,y1:420,x2:540,y2:340,stroke:'#1F4E9C','stroke-width':3,opacity:0,'marker-end':'url(#arrowBl)'},g);
+}
+
+/* Result badges */
+let badgeParis, badgeNkc;
+function drawBadges(g){
+  badgeParis=el('g',{transform:'translate(180,370)',opacity:0},g);
+  badgeNkc=el('g',{transform:'translate(540,370)',opacity:0},g);
+}
+
+function setBadge(badge,text,color){
+  badge.innerHTML='';
+  el('rect',{x:-80,y:-16,width:160,height:32,rx:16,fill:color},badge);
+  txt(badge,0,0,text,{size:'14',fill:'#fff',bold:true});
+  badge.setAttribute('opacity','1');
+}
+
+/* Defs */
+const defs=el('defs',{},svg);
+const mOr=el('marker',{id:'arrowOr',markerWidth:10,markerHeight:8,refX:9,refY:4,orient:'auto'},defs);
+el('path',{d:'M0,0 L10,4 L0,8 Z',fill:'#D9661F'},mOr);
+const mBl=el('marker',{id:'arrowBl',markerWidth:10,markerHeight:8,refX:9,refY:4,orient:'auto'},defs);
+el('path',{d:'M0,0 L10,4 L0,8 Z',fill:'#1F4E9C'},mBl);
+
+/* Title */
+txt(svg,360,40,'Billetterie de concert — 1 place restante',{size:'24',fill:'#0E5C1B',bold:true});
+el('line',{x1:140,y1:60,x2:580,y2:60,stroke:'#EAF1E6','stroke-width':2},svg);
+
+/* Build scene */
+drawServer(svg,180,140,'Paris','🇫🇷');
+drawServer(svg,540,140,'Nouakchott','🇲🇷');
+drawLink(svg);
+drawTickets(svg);
+drawUsers(svg);
+drawArrows(svg);
+drawBadges(svg);
+
+/* Partition visual */
+let partitionG;
+function showPartition(){
+  linkLine.setAttribute('stroke','#B23A1E');
+  linkLine.setAttribute('stroke-dasharray','8 8');
+  linkLabel.innerHTML='';
+  el('rect',{x:-70,y:-14,width:140,height:28,rx:14,fill:'#B23A1E'},linkLabel);
+  txt(linkLabel,0,0,'⚠ Réseau coupé',{size:'13',fill:'#fff',bold:true});
+
+  if(!partitionG){
+    partitionG=el('g',{},svg);
+    el('line',{x1:360,y1:100,x2:360,y2:260,stroke:'#B23A1E','stroke-width':4,'stroke-dasharray':'6 4'},partitionG);
+    txt(partitionG,360,280,'PARTITION',{size:'16',fill:'#B23A1E',bold:true});
+  }
+}
+
+/* ── Simulation State Machine ── */
+const STEPS=[
+  'Situation initiale',
+  'Fatima et Ahmed veulent réserver',
+  'Coupure réseau (Partition !)',
+  'Choix : CP ou AP ?',
+  'Résultat CP',
+  'Résultat AP'
+];
+
+const msgEl=document.getElementById('msg');
+const actEl=document.getElementById('actions');
+const dotEl=document.getElementById('stepDots');
+
+function renderDots(current){
+  dotEl.innerHTML='';
+  for(let i=0;i<4;i++){
+    const d=document.createElement('div');
+    d.className='dot'+(i<current?' done':'')+(i===current?' current':'');
+    d.textContent=i+1;
+    dotEl.appendChild(d);
+  }
+}
+
+const sim={
+  step:0,
+  start(){
+    this.step=0;
+    resetScene();
+    this.goStep(0);
+  },
+  goStep(n){
+    this.step=n;
+    renderDots(n);
+    switch(n){
+      case 0: // Initial
+        msgEl.innerHTML='Les deux serveurs sont <b>synchronisés</b>. Il reste <b>1 place</b> pour le concert.<br><br>Au même instant, <b>Fatima</b> (Paris) et <b>Ahmed</b> (Nouakchott) cliquent sur <b>Réserver</b>.';
+        actEl.innerHTML='<button class="btn btn-vert" onclick="sim.goStep(1)">Réserver →</button>';
+        break;
+      case 1: // Both want to book
+        arrowFatima.setAttribute('opacity','1');
+        arrowAhmed.setAttribute('opacity','1');
+        msgEl.innerHTML='<b>Fatima</b> envoie sa demande au serveur <b>Paris</b>.<br><b>Ahmed</b> envoie sa demande au serveur <b>Nouakchott</b>.<br><br>Mais soudain… <span class="warn">le réseau entre les deux serveurs est coupé !</span>';
+        actEl.innerHTML='<button class="btn btn-rouge" onclick="sim.goStep(2)">⚠ Coupure réseau</button>';
+        break;
+      case 2: // Partition
+        showPartition();
+        msgEl.innerHTML='<span class="err">⚠ PARTITION RÉSEAU !</span><br><br>Les serveurs ne peuvent plus communiquer. Chacun voit <b>1 place restante</b> mais ne sait pas ce que fait l’autre.<br><br><b>Quel choix faire ?</b>';
+        actEl.innerHTML='<button class="btn btn-bleu" onclick="sim.goStep(3)">CP — Cohérence</button> <button class="btn btn-orange" onclick="sim.goStep(4)">AP — Disponibilité</button>';
+        break;
+      case 3: // CP
+        renderDots(3);
+        ticketParis.textContent='Places : 1';
+        ticketNkc.textContent='Places : 1';
+        setBadge(badgeParis,'❌ Réservation refusée','#B23A1E');
+        setBadge(badgeNkc,'❌ Réservation refusée','#B23A1E');
+        msgEl.innerHTML='<b>Choix CP</b> : les deux serveurs <b>refusent de vendre</b> tant qu’ils ne peuvent pas se synchroniser.<br><br>✅ <b>Cohérence garantie</b> : pas de survente.<br>❌ <b>Disponibilité sacrifiée</b> : personne ne peut acheter.<br><br><em>Exemples : MongoDB, HBase, Redis Cluster.</em>';
+        actEl.innerHTML='<button class="btn btn-outline" onclick="sim.start()">↻ Recommencer</button>';
+        break;
+      case 4: // AP
+        renderDots(3);
+        ticketParis.textContent='Places : 0';
+        ticketNkc.textContent='Places : 0';
+        setBadge(badgeParis,'✅ Réservée (Fatima)','#0E5C1B');
+        setBadge(badgeNkc,'✅ Réservée (Ahmed)','#0E5C1B');
+        msgEl.innerHTML='<b>Choix AP</b> : chaque serveur accepte la réservation <b>localement</b>.<br><br>✅ <b>Disponibilité garantie</b> : les deux clients sont servis.<br>❌ <b>Cohérence sacrifiée</b> : <span class="err">2 réservations pour 1 place !</span> Il faudra résoudre le conflit après.<br><br><em>Exemples : Cassandra, DynamoDB, CouchDB.</em>';
+        actEl.innerHTML='<button class="btn btn-outline" onclick="sim.start()">↻ Recommencer</button>';
+        break;
+    }
+  }
+};
+
+function resetScene(){
+  ticketParis.textContent='Places : 1';
+  ticketNkc.textContent='Places : 1';
+  arrowFatima.setAttribute('opacity','0');
+  arrowAhmed.setAttribute('opacity','0');
+  badgeParis.setAttribute('opacity','0');
+  badgeNkc.setAttribute('opacity','0');
+  linkLine.setAttribute('stroke','#0E5C1B');
+  linkLine.setAttribute('stroke-dasharray','12 6');
+  linkLabel.innerHTML='';
+  el('rect',{x:-60,y:-14,width:120,height:28,rx:14,fill:'#EAF1E6',stroke:'#0E5C1B','stroke-width':1.5},linkLabel);
+  txt(linkLabel,0,0,'Réseau OK',{size:'13',fill:'#0E5C1B',bold:true});
+  if(partitionG){partitionG.remove();partitionG=null;}
+}
+
+renderDots(-1);
+
+/* ── Communication avec le site parent (mode embed) ── */
+if(window.parent!==window){
+  window.addEventListener('message',function(e){
+    if(e.data==='reset') sim.start();
+  });
+}
+</script>
+</body>
+</html>
